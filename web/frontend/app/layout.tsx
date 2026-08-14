@@ -27,9 +27,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="zh-Hant" className="antialiased">
+    <html lang="zh-Hant" className="antialiased processor-scrollbar">
       <body>
         <SiteNavbar />
         {children}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { GalleryClient } from "@/components/gallery/gallery-client";
+import { GalleryClient } from "@/app/gallery/_components/gallery-client";
 
 export const metadata: Metadata = {
   title: "公開相簿｜Tiger Camera",

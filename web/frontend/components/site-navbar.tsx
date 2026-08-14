@@ -68,9 +68,9 @@ export function SiteNavbar() {
         <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between border-b border-primary/35 bg-background px-4 md:rounded-pill md:border md:px-5">
           <Link
             href="/"
-            className="group flex min-h-11 items-center gap-2 rounded-pill font-extrabold text-primary transition-all duration-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+            className="group flex min-h-11 items-center gap-2 rounded-pill font-extrabold text-primary transition-all duration-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25"
           >
-            <span className="grid size-12 place-items-center rounded-full bg-destructive-foreground transition-all duration-600">
+            <span className="grid size-12 place-items-center rounded-pill bg-background transition-all duration-600">
               <Image
                 src="/images/logo.png"
                 alt=""
@@ -79,10 +79,10 @@ export function SiteNavbar() {
                 className="transition-all duration-600 group-hover:scale-110"
               />
             </span>
-            <span className="hidden md:inline">Tiger Camera</span>
+            <span className="hidden font-title md:inline">Tiger Camera</span>
           </Link>
 
-          <div className="flex items-center gap-1 rounded-pill bg-pink/70 p-1">
+          <div className="flex items-center gap-1 rounded-pill bg-secondary/55 p-1">
             {navItems.map((item) => {
               const active = pathname === item.href;
               return (
@@ -91,10 +91,10 @@ export function SiteNavbar() {
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-extrabold transition-all duration-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25",
+                    "inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-extrabold transition-all duration-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25",
                     active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-primary-strong hover:bg-card hover:text-primary",
+                      ? "bg-primary text-background"
+                      : "text-primary hover:bg-background/70",
                   )}
                 >
                   {item.label}
@@ -108,10 +108,10 @@ export function SiteNavbar() {
             target="_blank"
             rel="noreferrer"
             aria-label="在 GitHub 查看 Tiger Camera（另開新視窗）"
-            className="group flex min-h-11 items-center gap-2 rounded-pill font-extrabold text-primary transition-all duration-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+            className="group flex min-h-11 items-center gap-2 rounded-pill font-extrabold text-primary transition-all duration-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25"
           >
-            <span className="hidden md:inline">GitHub</span>
-            <span className="grid size-11 place-items-center rounded-full bg-destructive-foreground text-primary transition-all duration-600 group-hover:scale-105 group-hover:bg-primary group-hover:text-yellow">
+            {/* <span className="hidden md:inline">GitHub</span> */}
+            <span className="grid size-11 place-items-center rounded-pill bg-background text-primary transition-all duration-600 group-hover:scale-105 group-hover:bg-primary group-hover:text-accent">
               <IconBrandGithub size={22} stroke={2} aria-hidden="true" />
             </span>
           </Link>

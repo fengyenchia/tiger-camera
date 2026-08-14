@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { PhotoProcessor } from "@/components/create/photo-processor";
+import { PhotoProcessor } from "@/app/create/_components/photo-processor";
 
 export const metadata: Metadata = {
   title: "領取與後製照片｜Tiger Camera",

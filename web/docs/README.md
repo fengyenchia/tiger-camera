@@ -28,7 +28,7 @@ NFC 固定指向 `/create`；V1 不使用 QR Code、不直接讀取 `192.168.4.1
 - 拍立得框、日期、文字與四款復古濾鏡；可以全部關閉。
 - 自訂文字、五句預設文字、原圖／後製圖下載。
 - Navbar、Footer、Motion 捲動行為、Tabler Icons、shadcn-style primitives。
-- Noto Sans TC Variable Font、base＋`md:` 響應式及 `duration-600` hover。
+- 內文使用 Noto Sans TC Variable Font；所有中英文標題使用 `font-title`／Chiron GoRound TC。
 
 ## 尚未完成
 
@@ -142,8 +142,10 @@ web/
 
 ## UI 規範
 
-- 奶油底、珊瑚紅、粉紅、黃色與淺藍；不使用漸層。
-- 字體統一 `/fonts/NotoSansTC-VF.ttf`。
+- 全站只定義五個基礎色：`background`、`foreground`、`primary`、`secondary`、`accent`；hover、弱文字、表面與框線都使用透明度，不再增加近似色。
+- 圓角只保留 `rounded-primary` 與 `rounded-pill`。
+- 奶油底、珊瑚紅、粉紅與黃色；不使用漸層。
+- 內文使用 `/fonts/NotoSansTC-VF.ttf`；所有 `h1`～`h6`、品牌名稱與英文 eyebrow 使用 `font-title`，來源為 `/fonts/ChironGoRoundTC-VariableFont_wght.ttf`。
 - 圖示使用 `@tabler/icons-react`。
 - 元件優先使用本地 shadcn/ui-style primitives。
 - hover 使用 `transition-all duration-600`。

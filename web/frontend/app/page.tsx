@@ -11,17 +11,17 @@ export default function Home() {
     <main id="main-content">
       <section className="mx-auto flex min-h-svh max-w-5xl items-center justify-center px-5 pb-16 pt-28 text-center md:px-10 md:pt-24">
         <div className="max-w-3xl">
-          <p className="mb-5 text-sm font-extrabold tracking-[0.14em] text-primary">
+          <p className="mb-5 font-title text-sm font-extrabold tracking-[0.14em] text-primary">
             YOUR LITTLE PHOTO ARCHIVE
           </p>
-          <h1 className="font-display text-5xl font-black leading-[1.25] tracking-[-0.04em] text-primary md:text-[5.25rem]">
+          <h1 className="title">
             把日常拍成
             <span className="block">一份可愛收藏</span>
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-sm font-semibold text-muted-foreground md:text-lg">
+          <p className="mx-auto mt-7 max-w-2xl text-sm font-semibold text-foreground/65 md:text-lg">
             相機先把照片上傳成私人草稿，螢幕顯示一次性領取碼
           </p>
-          <p className="font-semibold text-muted-foreground text-sm md:text-lg">
+          <p className="text-sm font-semibold text-foreground/65 md:text-lg">
             掃描機身 NFC，在自己的手機後製、下載，再決定是否公開
           </p>
 
@@ -38,7 +38,7 @@ export default function Home() {
           <ul className="mt-9 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm font-bold text-foreground">
             {highlights.map((label) => (
               <li key={label} className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-yellow" aria-hidden="true" />
+                <span className="size-2 rounded-pill bg-accent" aria-hidden="true" />
                 {label}
               </li>
             ))}

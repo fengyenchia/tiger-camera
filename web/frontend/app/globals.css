@@ -7,47 +7,23 @@
   font-weight: 100 900;
   font-display: swap;
 }
+@font-face {
+  font-family: "ChironGoRoundTC-VariableFont_wght";
+  src: url("/fonts/ChironGoRoundTC-VariableFont_wght.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
 
 :root {
-  /* Reference palette: cream, coral red, pink, yellow and powder blue. */
-  --background: #fcf5ea;
-  --foreground: #4b2b28;
-  --card: #fffaf0;
-  --card-foreground: #4b2b28;
+  /* Five base colors; states and surfaces use opacity instead of extra hues. */
+  --background: #fff9ef;
+  --foreground: #52332f;
+  --primary: #df4a43;
+  --secondary: #f5a8b8;
+  --accent: #ffd56f;
 
-  --primary: #d7473f;
-  --primary-hover: #bd3933;
-  --primary-strong: #9f332f;
-  --primary-soft: #f7d8d4;
-  --primary-foreground: #fffaf0;
-
-  --secondary: #f7d9df;
-  --secondary-hover: #f2c7d1;
-  --secondary-foreground: #7e3437;
-
-  --accent: #ffd878;
-  --accent-foreground: #674029;
-  --muted: #eee3cf;
-  --muted-foreground: #775d55;
-
-  --pink: #f5a9ba;
-  --yellow: #ffd878;
-  --blue: #a9cbd9;
-  --red-block: #d7473f;
-
-  --success: #627c5a;
-  --warning: #d79832;
-  --destructive: #b82f35;
-  --destructive-hover: #9d252c;
-  --destructive-foreground: #fffaf0;
-
-  --border: #e5b3aa;
-  --border-strong: #d86a60;
-  --ring: #d7473f;
-
-  --rounded-primary: 1.6rem;
-  --rounded-secondary: 1.2rem;
-  --rounded-small: 0.85rem;
+  --rounded-primary: 1.2rem;
   --rounded-pill: 999px;
 
   --shadow-soft-value: 0 10px 30px rgb(112 57 49 / 0.08);
@@ -60,36 +36,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
-  --color-primary-hover: var(--primary-hover);
-  --color-primary-strong: var(--primary-strong);
-  --color-primary-soft: var(--primary-soft);
-  --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-hover: var(--secondary-hover);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-pink: var(--pink);
-  --color-yellow: var(--yellow);
-  --color-blue: var(--blue);
-  --color-red-block: var(--red-block);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-destructive: var(--destructive);
-  --color-destructive-hover: var(--destructive-hover);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-ring: var(--ring);
 
   --radius-primary: var(--rounded-primary);
-  --radius-secondary: var(--rounded-secondary);
-  --radius-small: var(--rounded-small);
   --radius-pill: var(--rounded-pill);
 
   --shadow-soft: var(--shadow-soft-value);
@@ -99,17 +50,25 @@
   --shadow-dialog: var(--shadow-dialog-value);
 
   --font-sans: "Noto Sans TC Local", "Noto Sans TC", sans-serif;
-  --font-display: "Noto Sans TC Local", "Noto Sans TC", sans-serif;
+  --font-title: "ChironGoRoundTC-VariableFont_wght", "Noto Sans TC", sans-serif;
   --duration-600: 600ms;
 }
 
 * {
-  border-color: var(--border);
+  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 html {
   background: var(--background);
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+/* Radix Select locks body scroll while its menu is open. Keep the viewport
+   scrollbar visible so opening the menu does not change the page width. */
+html body[data-scroll-locked] {
+  overflow-y: scroll !important;
+  margin-right: 0 !important;
 }
 
 body {
@@ -119,6 +78,17 @@ body {
   font-family: var(--font-sans);
 }
 
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-title;
+  }
+}
+
 button,
 a,
 input {
@@ -126,8 +96,8 @@ input {
 }
 
 ::selection {
-  background: var(--pink);
-  color: var(--primary-strong);
+  background: color-mix(in srgb, var(--secondary) 70%, transparent);
+  color: var(--foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -141,5 +111,41 @@ input {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+
+@layer components {
+  .title {
+    @apply font-title text-5xl font-black leading-[1.25] tracking-[-0.04em] text-primary md:text-[5.25rem];
+  }
+  .subTitle {
+    @apply font-title text-4xl font-black tracking-[-0.04em] text-primary md:text-6xl;
+  }
+
+  .processor-scrollbar {
+    scrollbar-color: color-mix(in srgb, var(--foreground) 50%, transparent) transparent;
+    scrollbar-gutter: stable !important;
+    scrollbar-width: thin;
+  }
+
+  .processor-scrollbar::-webkit-scrollbar {
+    width: 0.5rem;
+  }
+
+  .processor-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .processor-scrollbar::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--foreground) 45%, transparent);
+    background-clip: content-box;
+    border: 0.125rem solid transparent;
+    border-radius: var(--rounded-pill);
+  }
+
+  .processor-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--foreground) 70%, transparent);
+    background-clip: content-box;
   }
 }
