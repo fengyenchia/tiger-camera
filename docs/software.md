@@ -1,335 +1,228 @@
-# 軟體、NFC、後製與雲端相簿規劃
+# 軟體、NFC、領取碼、後製與雲端相簿規劃
 
 ## 1. V1 架構
 
 ```mermaid
 flowchart LR
-    A[快門與 OV2640] --> B[ESP32-S3-CAM 韌體]
-    B --> C[PSRAM 最新 JPEG buffer]
-    B --> D[ST7735 預覽與回看]
-    B --> E[Wi-Fi AP 與 HTTP Server]
-    N[被動 NFC 貼紙 固定網址] --> E
-    C --> E
-    E --> F[手機取得最新照片]
-    F --> G[Canvas 復古後製]
-    G --> H[原圖與後製圖 Blob]
-    H --> I[下載到手機]
-    H --> J[短效上傳網址]
-    J --> K[私人物件儲存]
-    K --> L[照片資料庫]
-    L --> M[tiger-camera.fengyenchia.com 相簿]
+    A[快門與 OV2640] --> B[ESP32-S3-CAM]
+    B --> C[PSRAM 最新 JPEG]
+    B --> D[ST7735 預覽與狀態]
+    C --> E[手機熱點或可信任 Wi-Fi]
+    E --> F[裝置 API 建立私人草稿]
+    F --> G[R2 私人原圖]
+    F --> H[Neon draft metadata]
+    H --> I[相機螢幕顯示領取碼]
+    N[被動 NFC 固定 /create] --> J[使用者手機]
+    I --> J
+    J --> K[領取私人原圖]
+    K --> L[Canvas 後製與下載]
+    L --> M{選擇公開?}
+    M -->|否| O[維持私人並逾時清理]
+    M -->|是| P[上傳後製圖並 publish]
+    P --> Q[公開相簿]
 ```
 
-- ESP32-S3-CAM：拍攝、最新 JPEG buffer、螢幕、Wi‑Fi 與 HTTP。
-- NFC 貼紙：只保存 URL，不需接線、供電或相機端 NFC 模組。
-- 手機：必須先連上相機 Wi‑Fi，再由 NFC 開啟最新照片或網站。
-- 相機端不做 microSD、JSON metadata、多照片相簿與重開機保存。
-- 公開網站：管理員登入、Canvas 後製、私人物件儲存、metadata、相簿與刪除管理。
-- 區域取圖與雲端保存是兩層功能；雲端故障不能阻止拍照與下載到手機。
+- ESP32-S3-CAM：拍攝、PSRAM 最新 JPEG、螢幕、Wi-Fi station、私人草稿上傳與重試。
+- NFC：被動貼紙固定保存 `https://tiger-camera.fengyenchia.com/create`，不保存領取碼或秘密。
+- 使用者手機：輸入領取碼、取得該張私人照片、Canvas 後製、下載及選擇是否公開。
+- Next.js：裝置驗證、領取碼交換、claim token、相簿、管理員驗證與 API。
+- Cloudflare R2：私人 original／processed objects。
+- Neon：裝置、照片狀態、領取碼雜湊、期限與後製 metadata。
 
-## 2. 建議技術選擇
+## 2. 網路與憑證
 
-- PlatformIO + Arduino-ESP32，實作時鎖定版本。
-- 相機：Espressif `esp32-camera`，`PIXFORMAT_JPEG`。
-- 顯示：Adafruit_ST7735、TFT_eSPI 或 LovyanGFX；先確認實際模組 offset 與色序。
-- HTTP：Arduino `WebServer` 即可；成本版限制單一照片串流，避免複雜並行。
-- 相機區域頁面：最小 TypeScript／HTML／CSS 輸出，放在 `firmware/data/` 並打包至 ESP32 Flash。
-- 公開網站：`web/` 使用 Next.js App Router，部署於 `https://tiger-camera.fengyenchia.com`。
-- Web 架構：V1 維持一個 full-stack Next.js 專案；`web/api/` 是不產生網址的前端 Axios 呼叫層，`web/app/api/` 是產生 `/api/...` 網址的 Route Handlers，`web/lib/server/` 放伺服器專用邏輯，不另拆成兩個部署專案。
-- API：Next.js Route Handlers，處理登入驗證、上傳初始化、完成確認、列表與刪除。
-- 圖片：私人物件儲存；原圖與後製圖使用不同且不可覆寫的唯一 pathname。
-- metadata：PostgreSQL；物件儲存不能取代照片狀態與刪除流程資料庫。
-- 上傳：瀏覽器使用短效、限定操作與 pathname 的 URL 直接上傳，長期密鑰只留在伺服器。
-- 後製：手機 Canvas 2D，合成復古色調、拍攝日期與拍立得邊框。
+### ESP32 Wi-Fi
+
+- V1 不建立相機 AP、Captive Portal、mDNS 或 `192.168.4.1` 區域網站。
+- 相機連接預先設定的 2.4 GHz 手機熱點或可信任 Wi-Fi。
+- SSID、密碼與 device credential 放在不進 Git 的韌體 secrets／NVS。
+- 手機熱點中斷是正常錯誤：拍照與螢幕回看仍可用，網路恢復後重試最新未同步 JPEG。
+- 因 V1 沒有 microSD，只能可靠保留最新一張未同步照片；拍下一張前必須警告會取代尚未上傳的照片。
+
+### 三種權限
+
+| 憑證 | 持有者 | 能做什麼 | 不能做什麼 |
+|---|---|---|---|
+| Device credential | ESP32 | 建立私人草稿、上傳原圖、完成裝置上傳 | 讀取其他照片、發布、刪除、取得管理員權限 |
+| Claim token | 輸入正確領取碼的使用者 | 讀取、後製、下載及發布該張照片 | 操作其他草稿、管理裝置、永久刪除 |
+| Admin JWT | 唯一管理員 | 刪除照片、管理草稿與裝置 | 不放入 ESP32 或公開頁面 |
+
+Device credential 必須可由管理員撤銷。它可以是高熵 opaque token，Server 只保存 hash；不要把 R2、Neon 或管理員密鑰放入韌體。
 
 ## 3. 韌體模組
 
 | 模組 | 責任 |
 |---|---|
-| CameraService | 初始化、預覽幀、拍攝 JPEG |
-| LatestPhotoBuffer | 在 PSRAM 持有最新 JPEG、替換與 mutex 保護 |
-| DisplayService | 預覽、回看、隨機文字、狀態與錯誤 |
-| ButtonService | debounce 與短按 |
-| NetworkService | AP、DNS、mDNS 與 Captive Portal |
-| WebServer | 靜態頁、`/latest.jpg` 與裝置狀態 |
-| CaptureFeedback | 五句文字、避免連續重複與回看疊字 |
-| AppState | 狀態機與跨模組事件 |
+| `CameraService` | 初始化、預覽幀、拍攝 JPEG |
+| `LatestPhotoBuffer` | 在 PSRAM 持有最新 JPEG、替換與 mutex 保護 |
+| `DisplayService` | 預覽、回看、隨機文字、上傳與領取碼狀態 |
+| `ButtonService` | debounce 與短按 |
+| `NetworkService` | Wi-Fi station、自動重連、連線狀態 |
+| `DraftUploadService` | device initiate、R2 PUT、complete、重試與 idempotency |
+| `DeviceCredentialStore` | 從 NVS 讀取 device ID／credential，不寫入 log |
+| `CaptureFeedback` | 五句文字、避免連續重複與回看疊字 |
+| `AppState` | 狀態機與跨模組事件 |
 
 ## 4. 裝置狀態機
 
 | 狀態 | 畫面 | 允許操作 |
 |---|---|---|
-| BOOTING | Logo／初始化 | 無 |
-| LIVE_VIEW | 即時預覽 | 短按拍照 |
-| CAPTURING | 凍結／快門動畫 | 忽略重複按鍵 |
-| COPYING | 複製 JPEG 至 PSRAM | 不更新全畫面 |
-| REVIEW | 剛拍照片＋隨機文字 | 再按回預覽 |
-| WIFI_SHARE | SSID／網址 | 手機存取 |
-| NO_PHOTO | 尚未拍照提示 | 回預覽／拍照 |
-| ERROR | 錯誤碼與處置 | 重試／重開 |
+| `BOOTING` | Logo／初始化 | 無 |
+| `CONNECTING` | 連線中 | 仍可進入預覽 |
+| `LIVE_VIEW` | 即時預覽＋網路圖示 | 短按拍照 |
+| `CAPTURING` | 凍結／快門動畫 | 忽略重複按鍵 |
+| `COPYING` | 複製 JPEG 至 PSRAM | 不更新全畫面 |
+| `REVIEW` | 剛拍照片＋隨機文字 | 等待上傳 |
+| `UPLOAD_PENDING` | 等待網路／可重試 | 保留最新照片；覆蓋前警告 |
+| `UPLOADING` | 上傳中 | 不顯示領取碼 |
+| `CLAIM_READY` | 已上傳＋領取碼＋有效時間 | 可回預覽 |
+| `ERROR` | 錯誤碼與處置 | 重試／重開 |
 
-只有 JPEG 完整複製到程式持有的 PSRAM buffer 後才進入 `REVIEW`。文字池固定為：`ROAR!`、`抓到你了！`、`虎視眈眈！`、`今日獵物 +1`、`小虎拍到了！`，並避免與上一張相同。
+只有 Server `complete` 確認原圖 object 存在後，裝置才能顯示領取碼。畫面空間不足時至少顯示大字領取碼、剩餘分鐘與 `已上傳` 狀態，不做 QR Code。
 
-## 5. 最新 JPEG buffer 規則
-
-相機 driver 的 framebuffer 必須歸還，不能把 `fb->buf` 指標當成永久照片：
+## 5. 最新 JPEG buffer
 
 1. `esp_camera_fb_get()` 取得 JPEG。
-2. 先在 PSRAM 配置相同長度的自有 buffer。
-3. 複製 `fb->buf` 後立刻 `esp_camera_fb_return(fb)`。
-4. 使用 mutex 原子替換 `latestJpeg` 與 `latestJpegLen`。
-5. HTTP 傳送期間禁止替換或釋放正在使用的 buffer。
-6. 下一張成功照片覆蓋上一張；重新開機後為空。
+2. 在 PSRAM 配置自有 buffer 並複製完整內容。
+3. 立刻 `esp_camera_fb_return(fb)`，不得持有已歸還的 framebuffer pointer。
+4. 使用 mutex 原子替換 `latestJpeg`、長度與同步狀態。
+5. R2 PUT 期間禁止釋放正在傳送的 buffer。
+6. 上傳成功後仍可保留到下一次成功拍攝；斷電後消失。
 
-若 PSRAM 配置失敗，保留上一張有效照片並顯示拍攝失敗，不可留下半張圖片。
+若配置、拍攝或上傳失敗，保留上一張有效照片並顯示錯誤，不得產生領取碼。
 
-## 6. NFC 固定網址
+## 6. NFC 與領取碼
 
-### 6.1 正確網址
-
-ESP32 軟體 AP 的常用預設 IP 是完整的四段地址：
+NFC Tools 寫入：
 
 ```text
-http://192.168.4.1/latest.jpg
+https://tiger-camera.fengyenchia.com/create
 ```
 
-`http://192.168.4` 不是完整 IPv4 位址。也可另提供 `http://camera.local/latest.jpg`，但固定 IP 對不同手機通常更直接。
+NFC 是固定入口。每張照片的領取碼由 Server 產生並顯示於 ST7735，不改寫被動 NFC。
 
-### 6.2 使用 NFC Tools 寫入
+領取碼規則：
 
-1. 準備一張未鎖定的 NTAG213 或 NTAG215 被動式 NFC 貼紙；此短網址用 NTAG213 即足夠。
-2. 手機安裝並開啟 NFC Tools。
-3. 選擇「寫入」→「新增記錄」→「自訂 URL／URI」。
-4. 輸入 `http://192.168.4.1/latest.jpg`。
-5. 返回後按「寫入」，將手機 NFC 感應區貼近標籤，直到 App 顯示成功。
-6. 先讓測試手機連上相機的 Wi‑Fi AP，再感應貼紙並開啟通知中的網址。
-7. 拍一張新照片後再次感應，確認瀏覽器顯示新圖。
+- 6～8 位大寫英數字，排除 `0/O`、`1/I` 等易混淆字元。
+- 使用密碼學安全亂數；不能由時間、photo ID 或流水號推導。
+- Server 只保存 HMAC／hash，不保存可直接讀取的明碼。
+- 建議 30 分鐘內有效，成功交換 claim token 後立即失效。
+- `/api/drafts/claim` 依 IP、code 與裝置指紋做速率限制。
+- Claim token 建議 30～60 分鐘有效，只能操作同一個 draft ID。
+- 未領取草稿建議 24 小時後自動移除 original object 與 metadata。
 
-注意：NFC URL 不會自動連接相機 Wi‑Fi，也不會儲存照片。iPhone／Android 可能先顯示通知，使用者仍需點擊；展示時應在機身或說明卡印出 SSID 與連線步驟。
+## 7. 手機後製
 
-## 7. Arduino WebServer handler
+1. 掃 NFC 開啟 `/create`。
+2. 輸入螢幕上的領取碼。
+3. `POST /api/drafts/claim` 成功後取得短效 claim token 與私人原圖讀取能力。
+4. 原圖保留為 `originalBlob`，不得因後製而覆寫。
+5. 使用者獨立複選拍立得框、時間戳記、文字與復古濾鏡，或全部關閉。
+6. 文字模式為 `custom`、`default` 或 `none`；保存實際畫出的 `resolvedText`。
+7. 有效果時以 Canvas 產生 `processedBlob`；全部關閉時沿用原圖 bytes，仍使用不同 object key。
+8. 使用者可以只下載，不公開；下載不呼叫 publish API。
+9. 選擇公開時，以 claim token 取得 processed presigned PUT URL，完成後呼叫 publish。
 
-以下是規劃用的最小處理方式。`latestJpeg` 必須是複製到 PSRAM、由程式持有的記憶體，不能是已歸還給相機 driver 的 framebuffer。
+Claim token 適合放在記憶體或 `sessionStorage`，不要當成長期登入憑證。清除瀏覽資料可能讓尚未完成的後製狀態消失，因此頁面始終提供下載。
 
-```cpp
-#include <WebServer.h>
-#include <WiFi.h>
-#include "esp_camera.h"
-#include "esp_heap_caps.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
+## 8. API 合約
 
-WebServer server(80);
+| Method | Path | 驗證 | 責任 |
+|---|---|---|---|
+| `POST` | `/api/device/drafts/initiate` | Device credential | 建立 `uploading` 草稿與 original presigned PUT URL |
+| `PUT` | R2 presigned URL | URL 短效簽名 | ESP32 直接上傳 original JPEG |
+| `POST` | `/api/device/drafts/:id/complete` | Device credential | `HeadObject` 驗證原圖、改為 `ready`、回傳領取碼 |
+| `POST` | `/api/drafts/claim` | Claim code＋rate limit | 消耗領取碼、改為 `claimed`、回傳 photo-scoped claim token |
+| `GET` | `/api/drafts/:id/image` | Claim token | 取得該草稿私人原圖短效讀取 URL |
+| `POST` | `/api/drafts/:id/process/initiate` | Claim token | 取得 processed presigned PUT URL |
+| `POST` | `/api/drafts/:id/publish` | Claim token | 驗證 processed object 與 metadata，改為 `active` |
+| `GET` | `/api/photos` | 公開 | 分頁列出 `active` 照片 |
+| `GET` | `/api/photos/:id/image` | 公開 | 讀取 active original／processed 圖片 |
+| `DELETE` | `/api/photos/:id` | Admin JWT | 單次操作永久刪除兩個 objects 與 metadata |
 
-uint8_t* latestJpeg = nullptr;
-size_t latestJpegLen = 0;
-SemaphoreHandle_t latestJpegMutex;
+### 裝置上傳順序
 
-bool replaceLatestJpeg(const uint8_t* source, size_t length) {
-  auto* next = static_cast<uint8_t*>(
-      heap_caps_malloc(length, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-  if (next == nullptr) return false;
+1. 韌體為一次拍攝產生穩定的 `clientRequestId`。
+2. `device initiate` 驗證 device credential、JPEG MIME／大小並建立 `uploading`。
+3. Server 決定 `photos/{photoId}/original.jpg`，回傳五分鐘 presigned PUT URL。
+4. ESP32 PUT 原圖後呼叫 `device complete`。
+5. Server 以 `HeadObject` 確認物件後建立短效領取碼 hash，將狀態改為 `ready`，只在 response 回傳一次明碼。
+6. 相同 `clientRequestId` 重試必須回到同一筆草稿，不建立重複照片。
 
-  memcpy(next, source, length);
+### 領取與發布順序
 
-  if (xSemaphoreTake(latestJpegMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
-    heap_caps_free(next);
-    return false;
-  }
+1. `/api/drafts/claim` 將輸入正規化後與 hash 比對，檢查期限、狀態與 rate limit。
+2. 成功後以 transaction 將 `ready` 改為 `claimed`，使 code 無法再次使用。
+3. Server 回傳短效 claim token；token 包含 `draftId`、`scope`、`exp`、issuer 與 audience。
+4. 領取者處理圖片；只有選擇公開時才上傳 processed object。
+5. `publish` 以 `HeadObject` 驗證 processed object 與 metadata，再把狀態改為 `active`。
 
-  uint8_t* previous = latestJpeg;
-  latestJpeg = next;
-  latestJpegLen = length;
-  xSemaphoreGive(latestJpegMutex);
+## 9. 資料模型
 
-  if (previous != nullptr) heap_caps_free(previous);
-  return true;
-}
-
-bool captureLatestJpeg() {
-  camera_fb_t* fb = esp_camera_fb_get();
-  if (fb == nullptr || fb->format != PIXFORMAT_JPEG) {
-    if (fb != nullptr) esp_camera_fb_return(fb);
-    return false;
-  }
-
-  const bool copied = replaceLatestJpeg(fb->buf, fb->len);
-  esp_camera_fb_return(fb);
-  return copied;
-}
-
-void handleLatestJpeg() {
-  if (xSemaphoreTake(latestJpegMutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
-    server.send(503, "text/plain; charset=utf-8", "Camera busy");
-    return;
-  }
-
-  if (latestJpeg == nullptr || latestJpegLen == 0) {
-    xSemaphoreGive(latestJpegMutex);
-    server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    server.send(404, "text/plain; charset=utf-8", "尚未拍照");
-    return;
-  }
-
-  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  server.sendHeader("Pragma", "no-cache");
-  server.sendHeader("Expires", "0");
-  server.setContentLength(latestJpegLen);
-  server.send(200, "image/jpeg", "");
-
-  WiFiClient client = server.client();
-  size_t offset = 0;
-  while (offset < latestJpegLen && client.connected()) {
-    const size_t written = client.write(latestJpeg + offset,
-                                        latestJpegLen - offset);
-    if (written == 0) break;
-    offset += written;
-  }
-
-  xSemaphoreGive(latestJpegMutex);
-}
-
-void setupWebServer() {
-  latestJpegMutex = xSemaphoreCreateMutex();
-  server.on("/latest.jpg", HTTP_GET, handleLatestJpeg);
-  server.begin();
-}
-```
-
-成本版先限制同時一個照片下載。正式實作時需處理 mutex 建立失敗、client timeout、部分傳送、相機初始化失敗及 PSRAM 不存在等情況。
-
-## 8. 網路入口
-
-1. NFC：`http://192.168.4.1/latest.jpg`
-2. Captive Portal 首頁。
-3. `http://camera.local`（mDNS）。
-4. `http://192.168.4.1`（備援首頁）。
-
-AP 使用 WPA2。無網際網路是正常狀態，UI 必須清楚說明。Wi‑Fi 啟動失敗不能阻止相機拍照與螢幕回看。
-
-## 9. 手機後製與待傳佇列
-
-1. 下載 `/latest.jpg`。
-2. 將原始回應保留為 `originalBlob`，不得因後製而覆寫。
-3. 依影像方向修正 Canvas。
-4. 套用復古色調、暗角與顆粒，再合成拍攝日期及拍立得邊框。
-5. `canvas.toBlob('image/jpeg', 0.9)` 產生新的 `processedBlob`。
-6. 將兩份 Blob、暫存 ID、建立時間與後製參數寫入 IndexedDB 待傳佇列。
-7. 使用者可隨時下載原圖或後製圖；不回寫相機。
-8. 網路可用且已登入時啟動雲端上傳；API 完成前狀態只能是「待上傳」或「上傳中」。
-
-IndexedDB 只是斷網與切換 Wi-Fi 的暫存，不是永久備份。頁面必須提供「下載到手機」與「重新上傳」；清除瀏覽器資料可能移除待傳照片。
-
-## 10. 區域相機與公開網站的整合策略
-
-### 10.1 優先流程
-
-1. 使用者先登入並開啟 `https://tiger-camera.fengyenchia.com/capture`。
-2. 手機連上相機 AP 後，公開頁面嘗試讀取 `http://192.168.4.1/latest.jpg`。
-3. 支援的瀏覽器要求 Local Network Access 權限；ESP32 必須回應限定來源的 CORS headers。
-4. 取得照片後立即進入 IndexedDB，使用者可切回有網際網路的連線再上傳。
-
-公開 HTTPS 頁面讀取區域 HTTP IP 受瀏覽器的 Local Network Access、mixed-content、CORS 與手機保留行動數據策略影響，不能當作唯一可用流程。
-
-### 10.2 必做備援
-
-1. 相機區域頁面提供「下載原圖」。
-2. 公開網站提供「從手機選擇照片」。
-3. 使用者離開相機 AP、恢復網路後，從手機選取 JPEG。
-4. 公開網站再執行 Canvas 後製與上傳。
-
-此備援不依賴跨來源讀取私有 IP，是 iPhone／Android 都必須驗收的 V1 流程。
-
-## 11. 雲端照片生命週期與 API
-
-### 11.1 API 合約
-
-| Method | Path | 責任 |
-|---|---|---|
-| `POST` | `/api/photos/initiate` | 驗證登入、限制 MIME／大小，建立照片 ID 與兩個短效上傳網址 |
-| `PUT` | 短效 URL | 瀏覽器直接上傳原圖或後製圖，不經應用伺服器轉送檔案 |
-| `POST` | `/api/photos/:id/complete` | 以儲存服務 `head` 驗證兩個物件後，將照片改為 `active` |
-| `GET` | `/api/photos` | 分頁列出管理員可見的 `active` 照片 |
-| `GET` | `/api/photos/:id/image?variant=original|processed` | 驗證登入後串流圖片或回傳短效讀取網址 |
-| `DELETE` | `/api/photos/:id` | 單次刪除操作後直接永久刪除兩個物件與 metadata |
-
-所有 API 都必須驗證管理員 session。`initiate` 只能簽發指定照片 ID、variant、MIME、大小與短有效期的上傳能力，不得把整個儲存空間的讀寫密鑰送到瀏覽器。
-
-### 11.2 上傳順序
-
-1. Client 產生一個 `clientRequestId`，避免重試建立重複照片。
-2. `initiate` 建立 `uploading` 記錄及唯一 pathname，例如 `photos/{photoId}/original.jpg` 與 `photos/{photoId}/processed.jpg`。
-3. Client 分別 `PUT` 兩份 Blob。
-4. Client 呼叫 `complete`。
-5. Server 驗證 pathname、content type、size 與兩個物件均存在，再改成 `active`。
-6. 若任一步驟失敗，Client 保留待傳項目；Server 可清理超時停在 `uploading` 的物件與記錄。
-
-### 11.3 刪除順序
-
-1. 使用者按一次刪除，Client 立即呼叫 API 並顯示處理中狀態；不顯示確認視窗。
-2. Server 把狀態改為 `deleting`，避免仍出現在相簿。
-3. 刪除原圖與後製圖。
-4. 兩個物件都不存在後才刪除 metadata，或留下最小 tombstone 供稽核。
-5. 部分失敗時保留 `deleting`，讓背景工作或管理員重試；不得靜默留下孤兒物件。
-
-## 12. 資料模型
-
-`photos` 最小欄位：
+### `devices`
 
 | 欄位 | 用途 |
 |---|---|
-| `id` | UUID 主鍵，也是物件路徑的一部分 |
-| `clientRequestId` | 上傳重試的 idempotency key，必須唯一 |
-| `originalPath`／`processedPath` | 兩個私人物件路徑 |
-| `status` | `uploading`、`active`、`deleting` |
-| `createdAt`／`completedAt` | 建立與完成時間 |
-| `filterPreset` | 使用的效果名稱與版本 |
-| `width`／`height` | 輸出尺寸 |
-| `originalSize`／`processedSize` | 上傳大小與限制檢查 |
-| `mimeType` | V1 僅接受 `image/jpeg` |
+| `id` | 裝置 UUID |
+| `name` | 管理員辨識名稱 |
+| `credentialHash` | device credential hash |
+| `status` | `active`／`revoked` |
+| `createdAt`／`lastSeenAt` | 建立與最近連線時間 |
 
-V1 只有一個管理員，因此可以先不建立公開使用者註冊；但資料表與 API 不應用檔名推定授權。
+### `photos`
 
-## 13. 安全與錯誤規則
+| 欄位 | 用途 |
+|---|---|
+| `id`／`deviceId` | 照片 UUID 與建立裝置 |
+| `clientRequestId` | 裝置重試 idempotency key |
+| `originalKey`／`processedKey` | 私人 R2 object keys；processed 在發布前可為 null |
+| `status` | `uploading`、`ready`、`claimed`、`active`、`deleting` |
+| `claimCodeHash`／`claimExpiresAt` | 領取碼 hash 與期限 |
+| `claimedAt`／`publishedAt` | 領取與發布時間 |
+| `capturedAt`／`createdAt` | 拍攝與資料建立時間 |
+| `frameEnabled`／`timestampEnabled` | 後製選項 |
+| `textMode`／`resolvedText` | 文字模式與實際內容 |
+| `filterPreset`／`processingVersion` | 濾鏡與配方版本 |
+| `width`／`height`／大小／MIME | 驗證與顯示 metadata |
 
-- 管理員登入使用安全、HttpOnly、Secure session cookie；密碼雜湊或外部登入設定只放伺服器。
-- 允許的圖片類型只限 JPEG，並限制單檔大小、像素與請求頻率。
-- 不信任 client 傳入的 pathname、狀態、擁有者或完成結果；Server 必須重新驗證。
-- CORS 只允許實際需要的來源、method 與 headers，不使用帶 credentials 的萬用 `*`。
-- 公開 Git、ESP32 韌體與瀏覽器 bundle 不得包含資料庫 URL、管理員密碼或長期儲存 token。
-- 任何上傳、讀取或刪除失敗都要回傳可辨識錯誤碼，UI 提供重試，不把錯誤當成功。
+## 10. 安全規則
 
-## 14. Repo 實作目錄
+- 不把 device credential、claim token、Admin JWT、R2／Neon secrets 寫入 log、公開 Git 或錯誤 response。
+- Admin JWT 仍採使用者指定的 localStorage＋Axios Bearer 模式；維持嚴格 CSP、禁止不可信 HTML，`401` 時清除 token。
+- Claim token 與 Admin JWT 使用不同 audience／scope，不可互相替代。
+- Server 不信任 client 提供的 object key、照片狀態、角色、大小或完成結果。
+- Claim code 錯誤 response 不透露「不存在」或「已用掉」的精確差異，避免枚舉。
+- 公開 API 只回傳 `active` 照片；`uploading／ready／claimed` 一律不可列出。
+- 永久刪除依序 `active → deleting → 刪 R2 → 確認不存在 → 刪 metadata`，部分失敗可安全重試。
+
+## 11. Repo 實作目錄
 
 ```text
 firmware/
 ├── platformio.ini
 ├── include/
-├── src/
-├── test/
-└── data/              # 打包至 Flash 的最小區域取圖頁面
+├── src/                 # camera、display、network、draft upload
+└── test/
 
 web/
-├── app/
-│   ├── api/           # auth、photos 與上傳生命週期
-│   ├── capture/       # 取圖、Canvas 與待傳佇列
-│   └── gallery/       # active 相簿與單次操作直接刪除
-├── lib/               # auth、database、storage、validation
-├── public/
-├── tests/
-└── migrations/
-
-enclosure/
-├── cad/
-├── exports/
-└── dimensions/
+├── frontend/
+│   ├── api/             # browser Axios: drafts、photos、auth
+│   ├── app/             # home、create、gallery；不含 Route Handlers
+│   ├── components/
+│   ├── lib/photo-processing/
+│   └── public/
+├── backend/
+│   ├── app/api/device/  # device credential endpoints
+│   ├── app/api/drafts/  # claim、private read、process、publish
+│   ├── app/api/photos/  # public gallery、admin delete
+│   ├── lib/server/      # auth、device auth、claim、Neon、R2
+│   └── proxy.ts         # API CORS allowlist／preflight
+└── docs/
 ```
 
-## 15. 實作參考
+## 12. 實作參考
 
 - [Next.js Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers)
-- [Vercel 自訂網域設定](https://vercel.com/docs/domains/set-up-custom-domain)
-- [Vercel Blob Private Storage](https://vercel.com/docs/vercel-blob/private-storage)
-- [Vercel Blob Client Uploads](https://vercel.com/docs/vercel-blob/client-upload)
-- [Vercel Blob Signed URLs](https://vercel.com/changelog/signed-urls-are-now-available-for-vercel-blob)
-- [MDN Local Network Access](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Local_network_access)
+- [Cloudflare R2 Presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/)
+- [Cloudflare R2 CORS](https://developers.cloudflare.com/r2/buckets/cors/)
+- [Neon Serverless Driver](https://neon.com/docs/serverless/serverless-driver)

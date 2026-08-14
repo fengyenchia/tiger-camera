@@ -7,9 +7,10 @@
 - 先以測試 JPEG 完成雲端照片生命週期，不等待硬體。
 - 第一版硬體以 USB 供電驗證，不先買電池與 microSD。
 - 依 ESP32-S3-CAM pinout 避開相機、PSRAM、SD、USB 與 strapping 腳位。
-- 相機區域網站與公開雲端網站是兩個不同 origin、兩個不同 build。
+- ESP32 以 Wi-Fi station 連手機熱點／可信任 Wi-Fi，不建立使用者 AP 或區域照片網站。
+- 私人原圖先由裝置上傳；NFC 固定進 `/create`，領取碼只顯示於相機螢幕。
 - 原圖與後製圖分開保存，任何濾鏡都不得覆寫原圖。
-- 無網路時仍可拍照與下載；未完成上傳不得顯示「已永久保存」。
+- 無網路時仍可拍照與回看；未完成裝置上傳不得顯示領取碼或「已保存」。
 - 基本矩形外殼在電子尺寸、供電與 RF 實測後才畫。
 - GIF、影片、公開註冊、多使用者社群、microSD 裝置端相簿與角色外殼不屬於 V1。
 
@@ -18,29 +19,29 @@
 任務：
 
 - 以本文件、`software.md`、`test-plan.md` 與 `PROJECT_STATUS.md` 鎖定同一套 V1。
-- 在 `web/` 建立 Next.js App Router 專案。
+- 在 `web/frontend/` 與 `web/backend/` 建立兩個 Next.js App Router 專案；以 pnpm workspace 統一執行檢查。
 - 建立環境變數範例，但不提交真實密鑰、管理員密碼或資料庫 URL。
 - 建立最小 CI／本機檢查：format、lint、typecheck、test、production build。
-- 部署空白頁，將 `tiger-camera.fengyenchia.com` 加入專案並依平台指示設定 DNS。
+- 分別部署 Frontend／Backend；Frontend 綁定 `tiger-camera.fengyenchia.com`，並設定 Backend URL、CORS 與各自的環境變數。
 
 完成條件：本機與部署環境均能顯示健康檢查頁；production build 通過；Git 中沒有秘密。
 
-## Phase 1：Gate C0 私人雲端相簿
+## Phase 1：Gate C0 私人草稿、領取與公開生命週期
 
 任務：
 
-- 建立 Private Object Storage 與 PostgreSQL。
-- 建立 `photos` migration，包含 `uploading／active／deleting` 狀態。
-- 完成單一管理員登入與受保護頁面。
-- 實作 `POST /api/photos/initiate` 與限定路徑、操作、MIME、大小、有效期的上傳網址。
-- 以檔案選擇器上傳原始測試 JPEG，Canvas 產生後製 JPEG，兩者使用不同 pathname。
-- 實作 `complete`、相簿列表、私人圖片讀取與單次操作直接永久刪除。
-- 清理逾時 `uploading`；永久刪除部分失敗時保留 `deleting` 供重試。
+- 建立私人 Cloudflare R2 bucket 與 Neon Serverless PostgreSQL。
+- 建立 `devices`／`photos` migration，包含 `uploading／ready／claimed／active／deleting`。
+- 建立 device credential hash、裝置 initiate／complete 與原圖 presigned PUT。
+- 建立安全領取碼、HMAC hash、期限、rate limit 與 photo-scoped claim token。
+- 以固定測試 JPEG 模擬裝置上傳，於 `/create` 領取後執行 Canvas。
+- Claim holder 選擇公開後上傳 processed JPEG；公開相簿頁不需登入。
+- 完成單一管理員登入、裝置撤銷、草稿清理與單次操作永久刪除。
 
 完成條件：
 
-- 一張測試 JPEG 能完成「原圖／後製圖上傳→相簿→單次永久刪除」。
-- 未登入者不能列出、讀取、上傳或刪除照片。
+- 一張測試 JPEG 能完成「裝置私人上傳→領取碼→手機後製→可選公開→單次永久刪除」。
+- 無 code/token 不能讀私人草稿；claim token 只能發布同一張照片；管理員 JWT 才能永久刪除。
 - 永久刪除後，兩個物件與 metadata 都不存在。
 - 相同 `clientRequestId` 重試不會產生重複照片。
 
@@ -74,32 +75,33 @@
 - 相機取景顯示至 ST7735。
 - 加入快門 debounce。
 - 將 JPEG 複製到自有 PSRAM buffer，再歸還相機 framebuffer。
-- 用 mutex 保護捕捉、顯示與 HTTP 讀取。
+- 用 mutex 保護捕捉、顯示與裝置上傳讀取。
 - 實作 `LIVE_VIEW → CAPTURING → COPYING → REVIEW` 狀態機。
 - 五句隨機文字避免連續重複；錯誤時保留上一張有效照片。
 
 完成條件：冷開機 10 次、連拍 30 次皆無 boot 失敗、花屏、壞圖、use-after-free 或重啟。
 
-## Phase 5：Gate L0 Wi-Fi、區域網站與 NFC
+## Phase 5：Gate L0 Wi-Fi station、裝置上傳與 NFC
 
 任務：
 
-- 建立 WPA2 AP、DNS、`camera.local` mDNS、Captive Portal 與固定 IP。
-- 實作 `/status` 與 `/latest.jpg`，加入防快取 headers；無照片時回 404。
-- 在 `firmware/data/` 建立最小區域取圖頁面與下載按鈕。
-- 使用 NFC Tools 把 `http://192.168.4.1/latest.jpg` 寫入 NTAG213。
-- 下載與拍照同時進行，驗證 mutex 與 buffer 生命週期。
+- 從忽略 Git 的設定／NVS 讀取 2.4 GHz SSID、密碼、device ID 與 credential。
+- 實作 Wi-Fi station 自動重連、timeout、指數退避與離線非致命狀態。
+- 接上 `device initiate → PUT original → complete`，保護 PSRAM buffer 生命週期。
+- complete 成功後在 ST7735 顯示大字領取碼與期限；失敗時只顯示等待網路／重試。
+- 使用 NFC Tools 把 `https://tiger-camera.fengyenchia.com/create` 寫入 NTAG213。
 
-完成條件：iPhone 與 Android 各至少一台能透過固定 IP 或 NFC 下載新照片；新拍照後不顯示舊快取。
+完成條件：手機熱點中斷與恢復後能上傳同一張照片且不重複；只有 Server 確認成功才顯示可用領取碼。
 
 ## Phase 6：Gate W0 Canvas 與離線待傳
 
 任務：
 
-- 保留原始 Blob，建立包含復古處理、拍攝日期與拍立得邊框的 Canvas 效果及獨立後製 Blob。
+- 保留原始 Blob，讓使用者獨立複選拍立得框、時間戳記、文字與復古濾鏡，並產生獨立後製 Blob；允許全部不選。
+- 文字支援自訂、預設與無文字，metadata 保存實際畫出的文字及所有後製選項。
 - 處理直向、橫向、低光、大圖記憶體與 JPEG 輸出。
-- 建立 IndexedDB 待傳佇列與 `pending／uploading／saved／failed` UI。
-- 提供原圖、後製圖下載與手動選檔入口。
+- 在 hosted site 建立 claim token session、processed 待傳佇列與 `pending／uploading／saved／failed` UI。
+- 提供原圖、後製圖下載與「是否公開」選項；未選公開時不得呼叫 process upload／publish API。
 
 完成條件：landscape、portrait、low-light fixtures 輸出正確；清楚區分「下載完成」「待上傳」與「已永久保存」。
 
@@ -107,14 +109,14 @@
 
 任務：
 
-- 公開 HTTPS 頁面在支援的瀏覽器要求 Local Network Access 並讀取 `http://192.168.4.1/latest.jpg`。
-- ESP32 回應最小且限定來源的 CORS 設定。
-- 取圖後立即寫入 IndexedDB，切換回有網路連線再上傳。
-- 接上 `initiate → PUT original／processed → complete` 流程。
+- 掃 NFC 進 hosted `/create`，輸入 ST7735 顯示的領取碼。
+- Server 原子地將 `ready → claimed` 並簽發短效 photo-scoped claim token。
+- hosted site 以 claim token 讀取私人原圖，執行 Canvas 並提供下載；不公開時流程在此結束。
+- 領取者勾選公開後，接上 `process initiate → PUT processed → publish`。
 - 實作失敗重試、重複請求 idempotency 與明確錯誤訊息。
-- 測試「區域頁面下載→公開網站選檔上傳」的必要備援。
+- 驗證 ESP32、claim holder 與 Admin 三種 token scope 完全隔離。
 
-完成條件：至少一組 iPhone 與一組 Android 能完成直接或備援流程；斷網不會誤報成功，恢復網路後可以重試。
+完成條件：至少一組 iPhone 與一組 Android 能完成「掃 NFC→輸入領取碼→後製→下載／選擇公開」；錯碼、過期、重複領取與斷網不會誤報成功。
 
 ## Phase 8：Gate P0 電池方案
 
@@ -141,19 +143,19 @@
 
 | Gate | 問題 | 不通過的動作 |
 |---|---|---|
-| C0 | 私人照片生命週期是否完整且未洩露權限？ | 停止硬體整合，先修 auth、storage、metadata 與刪除一致性 |
+| C0 | 裝置、領取者、公開訪客與管理員四種權限是否隔離？ | 停止硬體整合，先修 claim、auth、storage 與狀態一致性 |
 | H0 | 是否收到 N16R8＋OV2640，且 USB-C 可燒錄？ | 換貨或修正板型設定，不沿用 AI-Thinker pinout |
 | H1 | 相機＋ST7735＋快門＋PSRAM 可共存？ | 降 TFT clock、調整 reset／CS／GPIO 或降低 JPEG 規格 |
-| L0 | 區域取圖與 NFC 在 iOS／Android 可用？ | 保留固定 IP 與下載按鈕，Captive Portal／mDNS 只作輔助 |
+| L0 | 手機熱點重連、裝置上傳與螢幕領取碼是否可靠？ | 加強重試／狀態；若要保留多張離線照片則重新評估 microSD |
 | W0 | Canvas 與待傳佇列能保留原圖？ | 停止雲端整合，修正 Blob、IndexedDB 與狀態 UI |
-| I0 | 相機到雲端在斷網與瀏覽器限制下可恢復？ | 以手動選檔作主流程，直接 Local Network Access 降為增強功能 |
+| I0 | 領取碼交換、claim token 與可選發布是否安全可恢復？ | 修正期限、rate limit、idempotency 與 scope，不放寬為公開草稿 |
 | P0 | 電池供電完整且穩定？ | 補 5 V 升壓／保護或維持 USB 供電 |
 | E0 | 殼內 Wi-Fi、散熱與維修性合格？ | 移天線、電池與開孔位置 |
 
 ## 目前工作清單
 
-1. 建立 `web/` Next.js 骨架與健康檢查。
-2. 部署並設定 `tiger-camera.fengyenchia.com`。
+1. 完成 `web/frontend/`、`web/backend/` pnpm workspace 與 Backend health endpoint。
+2. 建立兩個 Vercel projects，部署並設定 Frontend 網域、Backend URL 與 CORS。
 3. 完成 Gate C0 的登入、測試 JPEG、相簿與刪除生命週期。
 4. Gate C0 通過後才下單硬體核心驗證包。
 5. 到貨後依 Phase 3 至 Phase 7 逐 Gate 前進。

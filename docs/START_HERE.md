@@ -4,36 +4,39 @@
 
 ## V1 一句話
 
-ESP32-S3-CAM 負責拍照、螢幕回看及提供最新 JPEG；手機瀏覽器負責 Canvas 後製；`https://tiger-camera.fengyenchia.com` 負責登入後的永久保存、相簿與單次操作直接刪除。
+ESP32-S3-CAM 負責拍照並透過手機熱點／可信任 Wi-Fi 上傳私人草稿；使用者掃 NFC、輸入螢幕領取碼後，在自己的手機完成 Canvas 後製、下載或選擇公開；管理員負責永久刪除。
 
 ## 系統分成兩層
 
 ```mermaid
 flowchart LR
     A[ESP32-S3-CAM 拍照] --> B[PSRAM 最新 JPEG]
-    B --> C[相機區域網站 /latest.jpg]
-    C --> D[手機 Canvas 後製]
-    D --> E[原圖與後製圖]
-    E --> F[短效上傳網址]
-    F --> G[私人物件儲存]
-    G --> H[照片資料庫]
-    H --> I[tiger-camera.fengyenchia.com 相簿]
+    B --> C[手機熱點或可信任 Wi-Fi]
+    C --> D[私人草稿原圖]
+    D --> E[相機螢幕顯示領取碼]
+    F[NFC 固定開啟 create] --> G[使用者輸入領取碼]
+    E --> G
+    G --> H[使用者手機 Canvas 後製]
+    H --> I[下載或選擇公開]
+    I --> J[公開相簿]
 ```
 
-### 相機區域層
+### 相機與裝置上傳層
 
-- 網址：`http://192.168.4.1`、`http://camera.local`。
-- NFC：固定寫入 `http://192.168.4.1/latest.jpg`。
-- 不要求網際網路也能拍照、回看與下載最新照片。
-- V1 只在 PSRAM 保存最新一張，關機後消失。
+- 相機以 Wi-Fi station 模式連接預先設定的 2.4 GHz 手機熱點或可信任 Wi-Fi，不建立使用者 AP。
+- 只有相機需要該熱點；領取者以自己的行動網路或一般 Wi-Fi 使用 hosted site。
+- ESP32 使用可撤銷、device-scoped credential 建立私人草稿；不持有管理員 JWT、R2 或 Neon 密鑰。
+- 原圖上傳並經 Server 確認後，螢幕才顯示 6～8 位短效領取碼。
+- 無網路仍可拍照與回看，但 V1 只在 PSRAM 保留最新一張；未同步時不得顯示領取碼。
 
 ### 雲端相簿層
 
 - 網址：`https://tiger-camera.fengyenchia.com`。
-- 需要管理員登入。
+- 所有人可瀏覽公開相簿；有效領取碼持有者只能處理與發布該張草稿，管理員才能刪除任意公開照片。
 - 原圖與後製圖分開保存，後製圖不得覆寫原圖。
 - 支援相簿與單次操作直接永久刪除；V1 不設垃圾桶、還原或確認視窗。
-- 無網路時不得顯示「已永久保存」；照片先留在瀏覽器待傳佇列或下載到手機。
+- NFC 固定寫入 `https://tiger-camera.fengyenchia.com/create`；每張照片的領取碼顯示在相機螢幕，不寫入被動 NFC。
+- 未領取草稿逾時後自動刪除；未明確選擇公開的照片不出現在相簿。
 
 ## 現在從哪裡開始
 
@@ -41,16 +44,16 @@ flowchart LR
 
 這是目前第一個實作 Gate，先不要等待硬體：
 
-1. 在 `web/` 建立 Next.js 專案。
-2. 部署空白網站並連接 `tiger-camera.fengyenchia.com`。
-3. 建立私人物件儲存與照片資料表。
-4. 建立單一管理員登入；密鑰只放伺服器環境變數。
-5. 以檔案選擇器上傳一張測試 JPEG。
-6. 顯示相簿縮圖與原圖／後製圖。
-7. 完成單次操作直接永久刪除。
-8. 驗證未登入者不能列出或讀取照片。
+1. 在 `web/frontend/` 與 `web/backend/` 建立可獨立部署的 Next.js 專案。
+2. 分別部署 Frontend／Backend；Frontend 連接 `tiger-camera.fengyenchia.com`，再設定 Backend API URL 與 CORS 白名單。
+3. 建立 Cloudflare R2 私人 bucket、CORS 與 Neon `devices`／`photos` 資料表。
+4. 建立測試 device credential，模擬裝置上傳原圖並完成 `uploading → ready`。
+5. 建立安全領取碼、期限、rate limit 與 photo-scoped claim token。
+6. 在 `/create` 領取測試 JPEG、後製、下載並選擇公開。
+7. 顯示公開相簿，並建立單一管理員 JWT 與一次永久刪除。
+8. 驗證 device、claim holder、公開訪客與管理員四種權限不能互相越權。
 
-通過條件：一張測試 JPEG 能完成「上傳→顯示→單次永久刪除」，且儲存空間與資料庫沒有孤兒資料。
+通過條件：一張測試 JPEG 能完成「裝置私人上傳→領取碼→手機後製→可選公開→單次永久刪除」，且沒有越權或孤兒資料。
 
 ### Gate H0/H1：再驗證硬體核心
 
@@ -66,23 +69,26 @@ flowchart LR
 
 通過條件：冷開機 10 次、拍攝 30 次，皆無花屏、壞圖、boot failure 或重啟。
 
-### Gate L0：完成區域取圖
+### Gate L0：完成裝置連網與私人草稿
 
-1. 建立 WPA2 Wi-Fi AP。
-2. 實作 `/status` 與 `/latest.jpg`。
-3. 加入防快取 headers，尚無照片時回 404。
-4. 將最小區域頁面放在 `firmware/data/`。
-5. iPhone 與 Android 測試固定 IP、`camera.local` 與 NFC。
+1. 以忽略版本控制的設定提供 2.4 GHz SSID、密碼與 device credential。
+2. 實作 Wi-Fi station 自動重連、上傳 timeout 與指數退避重試。
+3. 實作 `device initiate → presigned PUT original → device complete`。
+4. Server 確認原圖後建立短效領取碼，ESP32 螢幕顯示「已上傳」與領取碼。
+5. 離線或上傳失敗時保留最新 JPEG 並顯示「等待網路」，不得假裝已有領取碼。
 
 ### Gate I0：整合瀏覽器後製與雲端
 
-1. 取得 `/latest.jpg`，保留原始 Blob。
-2. Canvas 產生新的後製 Blob。
-3. 先把兩份 Blob 放入瀏覽器待傳佇列。
-4. 網路可用時向雲端 API 取得短效、限定路徑的上傳網址。
-5. 直接上傳原圖與後製圖，再呼叫完成 API。
-6. 只有伺服器確認完成後才顯示「已永久保存」。
-7. 若公開 HTTPS 頁面無法讀取區域 HTTP 裝置，改用「區域頁面下載→公開網站選檔上傳」備援流程。
+1. 使用者掃機身 NFC，開啟 `https://tiger-camera.fengyenchia.com/create`。
+2. 輸入相機螢幕顯示的 6～8 位領取碼。
+3. Server 驗證領取碼、到期時間與嘗試限制，成功後換發短效、單張照片 claim token。
+4. 網站以 claim token 取得私人原圖並在該使用者手機執行 Canvas。
+5. 使用者可複選拍立得框、時間戳記、文字與復古濾鏡；四項都可不選。
+6. 使用者可下載原圖或後製圖，且不必公開。
+7. 若選擇公開，claim token 只能為同一張草稿上傳後製圖並呼叫 publish。
+8. Server 確認後製物件與 metadata 完整後才改為 `active` 並顯示「已公開」。
+
+領取者不需要管理員帳號。管理員 JWT 只用於刪除、草稿管理與裝置管理，不交給一般使用者或 ESP32。
 
 ### Gate P0/E0：最後才做電池與外殼
 

@@ -10,4 +10,4 @@
 
 預計使用 PlatformIO 管理 Arduino-ESP32 專案；實作時再依相容性鎖定套件版本。
 
-正式目錄中的 `data/` 只放燒錄至 ESP32 Flash 的最小區域取圖頁面，提供 `/latest.jpg`、下載與連線說明。登入、雲端 API、相簿與刪除管理全部放在 `web/`，不得把管理員密碼或雲端長期密鑰寫入韌體。
+V1 不建立相機 AP 或區域網站，因此不需要 `data/` 取圖頁面。韌體以 Wi-Fi station 連接不進 Git 的 2.4 GHz 手機熱點／可信任 Wi-Fi，使用可撤銷的 device-scoped credential 上傳私人原圖草稿；Server 確認後將領取碼回傳給裝置並顯示於 ST7735。NFC 固定指向 `https://tiger-camera.fengyenchia.com/create`。ESP32 不得保存管理員 JWT、R2／Neon credentials 或其他全域雲端密鑰。

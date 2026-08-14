@@ -1,50 +1,79 @@
 # Tiger Camera Web
 
-`tiger-camera.fengyenchia.com` 的 full-stack Next.js 網站。目前完成 Gate C0 的垂直切片：獨立介紹首頁、JPEG 上傳、相簿與單次操作直接刪除。V1 在同一個 `web/` 專案內按責任區分前端與伺服器程式，不另外拆成兩個部署專案。
+網站已拆成兩個可獨立部署的 Next.js 專案：
 
-完整功能用法、API 結構、限制與待做清單請見 [`docs/README.md`](docs/README.md)。
+```text
+web/
+├── frontend/   # 公開網站、NFC 領取、Canvas 後製、相簿與 Axios 呼叫層
+├── backend/    # HTTP API、CORS、驗證、未來的 R2／Neon server-only 程式
+├── docs/       # Web 架構與後端教學
+└── package.json
+```
 
-## 開發
+- Frontend：`https://tiger-camera.fengyenchia.com`
+- Backend：獨立 Vercel 專案；可使用 Vercel URL，或另設 `https://tiger-camera-api.fengyenchia.com`
 
-```bash
+完整功能、API、權限與待做清單見 [`docs/README.md`](docs/README.md)，後端實作步驟見 [`docs/backend-setup.md`](docs/backend-setup.md)。
+
+## 本機開發
+
+在 `web/` 執行：
+
+```powershell
+pnpm install
 pnpm dev
+```
+
+這會同時啟動：
+
+- Frontend：`http://localhost:3000`
+- Backend：`http://localhost:3001`
+- Backend health：`http://localhost:3001/api/health`
+
+也可分開啟動：
+
+```powershell
+pnpm dev:frontend
+pnpm dev:backend
+```
+
+品質檢查：
+
+```powershell
 pnpm lint
 pnpm typecheck
 pnpm build
 ```
 
-## 目前資料模式
+## 環境變數
 
-`app/api/photos/route.ts` 是記憶體 demo API，讓 Axios 串接與完整 UI 流程可以先被驗證。它不是永久儲存：開發伺服器重新啟動、重新部署或 Serverless instance 被回收後，新增內容可能消失。
+Frontend 的 `frontend/.env.local`：
 
-正式 Gate C0 要把 `lib/server/demo-photo-store.ts` 替換成：
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
+```
 
-1. 管理員 authentication。
-2. 私人物件儲存的短效上傳網址。
-3. PostgreSQL `photos` metadata。
-4. 原圖／後製圖分開上傳與完成確認。
-5. 可重試的永久刪除流程。
+Backend 的 `backend/.env.local`：
 
-正式後製會由瀏覽器 Canvas 保留原始 JPEG，另外產生包含復古處理、拍攝日期與拍立得邊框的 processed JPEG。
+```dotenv
+FRONTEND_ORIGIN=http://localhost:3000,https://tiger-camera.fengyenchia.com
+```
+
+正式 R2、Neon、JWT 與 device credential 變數只放 Backend；不得加上 `NEXT_PUBLIC_`。
 
 ## Vercel 部署
 
-Git 保留完整 repository，在 Vercel 專案將 **Root Directory** 設為 `web`。不需要另外建立只包含 `web/` 的 Git repository，也不要把根層文件複製進 `web/`。
+同一個 Git repository 建立兩個 Vercel projects：
 
-頁面只透過 `api/common.ts` 的 Axios instance 與 `api/photos.ts` 存取 API；共用型別放在 `api/types.ts`。正式後端不需要改寫畫面元件。
+1. Frontend project 的 Root Directory 設為 `web/frontend`，綁定 `tiger-camera.fengyenchia.com`。
+2. Backend project 的 Root Directory 設為 `web/backend`，使用 Vercel URL 或綁定 API 子網域。
+3. Frontend 設定 `NEXT_PUBLIC_API_BASE_URL=https://你的後端網域/api`。
+4. Backend 設定 `FRONTEND_ORIGIN=https://tiger-camera.fengyenchia.com`。
 
-## 設計系統
+Backend 的 CORS 只允許白名單前端；ESP32、R2 與 Neon 的秘密只存在 Backend environment variables。
 
-全域 tokens 位於 `app/globals.css`：
+## 目前資料模式
 
-- 色彩：`--primary`、`--secondary`、`--accent`、`--muted`、`--destructive` 等。
-- 圓角：`--rounded-primary`、`--rounded-secondary`、`--rounded-small`、`--rounded-pill`。
-- 陰影：`--shadow-soft-value`、`--shadow-card-value`、`--shadow-button-value` 等。
+Backend Route Handlers 仍是記憶體 Demo。`TIGER1` 可測試 claim、Canvas、下載與發布，但重新啟動、重新部署或 Serverless instance 回收後資料會消失。正式 Gate C0 才會換成 Cloudflare R2、Neon、device credential、安全 claim code、claim JWT 與 Admin JWT。
 
-Tailwind 4 已映射成 `bg-primary`、`text-muted-foreground`、`rounded-primary`、`shadow-card` 等 class。常用元件放在 `components/ui/`，採 shadcn/ui 的本地原始碼模式；圖示統一使用 `@tabler/icons-react`。
-
-全站字體統一載入 `public/fonts/NotoSansTC-VF.ttf`，一般文字與標題不混用其他字體。
-
-共用 `SiteNavbar` 與 `SiteFooter` 位於 `components/`。Navbar 使用 Motion 的 `useScroll` 與 `useMotionValueEvent`，向下捲動時隱藏、向上回捲一小段時顯示。
-
-ESP32 Flash 內的最小區域取圖頁面屬於 `../firmware/data/`，不與此專案共用 build。
+ESP32 韌體只負責裝置驗證與私人原圖上傳；NFC 直接開啟 hosted `/create`，沒有另一套區域網站。

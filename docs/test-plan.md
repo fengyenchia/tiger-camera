@@ -1,136 +1,118 @@
-# 成本版測試與驗收計畫
+# Tiger Camera V1 測試計畫
 
-## 1. 測試環境紀錄
+實機結果要記錄日期、韌體 commit、PCB／sensor／螢幕標示、供電、Wi-Fi／熱點型號、手機／OS／瀏覽器及錯誤 log。未在實體裝置執行的項目不得標示通過。
 
-- 韌體 commit
-- ESP32-S3-CAM PCB、N16R8、Flash／PSRAM 容量
-- OV2640 與 ST7735 模組標示、尺寸、解析度
-- TTL／OTG USB-C 的燒錄、序列埠與供電方式
-- 電池、充電／保護／5 V 升壓板型號（進入電池階段後）
-- 手機型號、OS、瀏覽器與 NFC 狀態
-- 網站 commit、部署 URL、瀏覽器與測試帳號角色
-- Object Storage access mode、SDK 版本與資料庫 migration 版本
-- 測試日期
-
-## 2. 雲端相簿 Gate C0
+## 1. Gate C0：雲端私人草稿與權限
 
 | ID | 測試 | 通過條件 |
 |---|---|---|
-| C-01 | 管理員登入 | 正確帳號可登入；錯誤登入不洩露帳號是否存在 |
-| C-02 | 未登入存取 | 相簿、私人圖片、上傳與刪除 API 均拒絕 |
-| C-03 | 初始化上傳 | 只簽發指定 photo ID、variant、JPEG、大小與短有效期的 URL |
-| C-04 | 原圖／後製圖 | 使用不同唯一 pathname，後製不得覆寫原圖 |
-| C-05 | 完成確認 | 兩個物件都存在且 metadata 相符後才改為 `active` |
-| C-06 | 相簿列表 | 只列出 `active`，分頁順序與建立時間正確 |
-| C-07 | 單次永久刪除 | 按一次刪除後立即送出刪除要求，並移除原圖、後製圖與 metadata |
-| C-08 | 刪除失敗 | 任一物件刪除失敗時不回報成功，保留可重試的 `deleting` 狀態 |
-| C-09 | 刪除失敗重試 | 部分失敗時維持 `deleting`，重試後不留孤兒物件 |
-| C-10 | 重複請求 | 相同 `clientRequestId` 重試不產生重複照片 |
-| C-11 | 無效檔案 | 非 JPEG、超過大小限制或偽造 pathname 被拒絕 |
-| C-12 | 秘密檢查 | production bundle、Git 與韌體都沒有長期儲存 token、DB URL 或密碼 |
+| C-01 | Device credential | 正確 credential 可 initiate；錯誤或 revoked credential 回 401 |
+| C-02 | 裝置 idempotency | 同一 device＋`clientRequestId` 重試只建立一筆草稿 |
+| C-03 | 原圖 presigned PUT | URL 只允許指定 original key、JPEG、method 與短有效期 |
+| C-04 | Complete 前缺物件 | `HeadObject` 失敗時維持 `uploading`，不得產生領取碼 |
+| C-05 | Complete 成功 | 原圖確認後改為 `ready`，只回傳一次 6～8 位領取碼 |
+| C-06 | Code entropy | 大量產生無可預測序列、碰撞會重抽、排除易混淆字元 |
+| C-07 | 錯碼 rate limit | 連續錯誤被限制，response 不透露不存在／過期／已用差異 |
+| C-08 | 原子領取 | 兩支手機同時輸入同碼，只能一方成功；狀態 `ready → claimed` |
+| C-09 | Claim token scope | 只能讀取、處理、發布 token subject 對應的 draft ID |
+| C-10 | Claim token 隔離 | 不能讀其他草稿、不能呼叫 Admin DELETE 或裝置 API |
+| C-11 | 私人讀取 | 無 claim token 不能取得 original；公開列表不顯示草稿 |
+| C-12 | 不公開 | 後製與下載完成但不呼叫 publish，照片仍不在公開相簿 |
+| C-13 | Publish | processed `HeadObject` 與 metadata 都正確後才 `claimed → active` |
+| C-14 | 公開讀取 | 未登入者可列出及讀取 `active`，看不到秘密或 object key |
+| C-15 | Admin JWT | localStorage Bearer JWT 只能在管理員 API 使用；過期 401 清除 token |
+| C-16 | 永久刪除 | 按一次後 `active → deleting`，刪兩個 objects 並移除 metadata |
+| C-17 | 刪除部分失敗 | 保留 `deleting`，UI 不顯示成功，重試不誤刪其他照片 |
+| C-18 | 草稿清理 | 逾時 `uploading／ready／claimed` 與孤兒 objects 依政策清除 |
 
-Gate C0 使用測試 JPEG 即可，不需要等待 ESP32。必須另外從儲存服務與資料庫確認永久刪除沒有留下孤兒資料。
-
-## 3. 相機核心功能
+## 2. Gate H0：單項硬體
 
 | ID | 測試 | 通過條件 |
 |---|---|---|
-| F-01 | 冷開機 | 10 次皆進入預覽，不受 strapping pin 影響 |
-| F-02 | 短按快門 | 每次只觸發一張 |
-| F-03 | 最新 JPEG buffer | 複製完成後才替換，下一張不混入上一張資料 |
-| F-04 | 拍後回看 | 2 秒內顯示且方向正確 |
-| F-05 | 隨機文字 | 五句皆可出現且不連續重複 |
-| F-06 | 無照片狀態 | 開機後 `/latest.jpg` 回 404，不傳垃圾資料 |
-| F-07 | HTTP JPEG | `Content-Type: image/jpeg`，可完整下載 |
-| F-08 | 防快取 | 新拍照後重新開啟 URL 顯示新圖 |
-| F-09 | 重新開機 | 最新照片清除並明確顯示尚未拍照 |
+| H-01 | 板型確認 | PCB、ESP32-S3-WROOM-1-N16R8、OV2640 標示與尺寸已記錄 |
+| H-02 | USB-C | TTL／OTG 的燒錄、供電與序列埠行為已確認 |
+| H-03 | 相機 | Camera 範例連續 10 分鐘無壞圖／重啟 |
+| H-04 | ST7735 | 解析度、offset、旋轉、色序與更新穩定 |
+| H-05 | Flash／PSRAM | 韌體讀值符合實物，PSRAM 配置成功 |
 
-## 4. 錯誤與復原
+## 3. Gate H1：拍照核心
 
-| ID | 情境 | 預期 |
+| ID | 測試 | 通過條件 |
 |---|---|---|
-| E-01 | PSRAM 配置失敗 | 保留上一張，不顯示成功文字 |
-| E-02 | 相機初始化失敗 | 顯示錯誤碼，可重試 |
-| E-03 | HTTP 正在下載時拍照 | mutex 保護，不 free 正在傳送的 buffer |
-| E-04 | Wi‑Fi 中斷 | 本機拍照與螢幕回看仍可用 |
-| E-05 | NFC 前未連相機 Wi‑Fi | 說明卡提示先連 SSID，不宣稱 NFC 可自動連線 |
-| E-06 | USB 供電不足 | 不反覆重啟；記錄 brownout |
-| E-07 | 電池板無 5 V 升壓 | 不接入主板，退回 USB 供電 |
-| E-08 | TTL 或 OTG USB-C 無法燒錄 | 記錄正確接口、BOOT／RESET 流程與 PlatformIO 設定 |
-| E-09 | 未確認邊充邊放能力 | 禁止相機開機充電，不以商品最大電流推定安全 |
-| E-10 | 上傳中斷 | 不顯示已保存；IndexedDB 保留待傳項目並可重試 |
-| E-11 | `complete` 前只上傳一個物件 | 照片維持 `uploading`，不進相簿；逾時後可清理 |
-| E-12 | 永久刪除只成功一半 | 保留 `deleting` 並可重試，不回到相簿、不靜默遺留 |
-| E-13 | Signed URL 過期或路徑被改 | 儲存服務拒絕；Client 重新呼叫 `initiate` 或取得新 URL |
-| E-14 | HTTPS 頁面無法讀取區域 HTTP IP | 顯示權限說明並改走下載後手動選檔，不形成死路 |
-| E-15 | 連相機 AP 後沒有網際網路 | 先進待傳佇列；恢復網路才上傳，拍照與下載仍可用 |
+| F-01 | 短按快門 | 每次只觸發一張，debounce 正確 |
+| F-02 | Framebuffer ownership | JPEG 複製後才歸還 framebuffer；無 use-after-free |
+| F-03 | PSRAM 替換 | 成功拍攝原子替換；失敗保留上一張有效照片 |
+| F-04 | 回看文字 | 五句近似均勻且不連續重複，明暗圖都可讀 |
+| F-05 | 無音訊 | 無喇叭、放大器或虎叫相關 GPIO／程式 |
+| F-06 | 冷開機 | 10 次無 boot failure、花屏或錯誤腳位狀態 |
+| F-07 | 連拍 | 30 次拍攝無壞 JPEG、display artifact 或 reset |
 
-## 5. 壓力測試
+## 4. Gate L0：手機熱點與裝置上傳
 
-### S-01：30 張核心 Gate
+| ID | 測試 | 通過條件 |
+|---|---|---|
+| N-01 | 2.4 GHz 相容 | 目標 iPhone／Android 熱點與家用 Wi-Fi 均至少一種可連 |
+| N-02 | 開機重連 | 熱點已開時自動連線；未開時不阻止拍照 |
+| N-03 | 省電斷線 | 熱點中斷顯示等待網路，不重啟相機核心 |
+| N-04 | 恢復重試 | 網路恢復後以同一 `clientRequestId` 上傳，不建立重複草稿 |
+| N-05 | PUT 中拍照 | mutex 保護 buffer；不傳截斷 JPEG，不釋放正在上傳的記憶體 |
+| N-06 | 未同步覆蓋 | 拍下一張前警告上一張未上傳會被取代 |
+| N-07 | 顯示領取碼 | complete 成功前絕不顯示 code；成功後大字清楚、期限正確 |
+| N-08 | Device 撤銷 | Server 撤銷後裝置停止上傳並顯示可辨識錯誤 |
+| N-09 | Secrets | 韌體 binary／serial log／Git 沒有 Admin、R2、Neon secrets |
 
-預覽→拍照→複製至 PSRAM→ST7735 回看→HTTP 下載，重複 30 次。
+## 5. Gate W0：領取與 Canvas
 
-通過：30 張都能完整讀取，無花屏、壞圖、watchdog、boot failure 或 brownout。
+| ID | 測試 | 通過條件 |
+|---|---|---|
+| W-01 | NFC | NTAG213 開啟 `https://tiger-camera.fengyenchia.com/create` |
+| W-02 | Code 輸入 | 大小寫、前後空白、錯碼、過期與已使用提示清楚 |
+| W-03 | 私人原圖 | 領取成功後只有該手機 token 能讀取；原始 Blob 不被覆寫 |
+| W-04 | 四項獨立 | 框、日期、文字、濾鏡各自開啟只產生所選效果 |
+| W-05 | 組合與全關 | 複合圖層順序正確；全部關閉不做無意義重壓縮 |
+| W-06 | 文字模式 | 自訂、五句預設、無文字與 `resolvedText` 一致 |
+| W-07 | 圖片方向 | landscape、portrait、low-light 與大圖輸出正確 |
+| W-08 | 下載 | 原圖／後製圖可下載；下載不觸發 publish |
+| W-09 | 公開選項 | 預設不公開；明確勾選才上傳 processed 並 publish |
+| W-10 | Claim expiry | token 到期後提示重新拍照／取得新碼，不誤用 Admin 登入 |
 
-### S-02：100 張展示耐久
+## 6. NFC 與瀏覽器矩陣
 
-成功率至少 98%；失敗可恢復，最新照片永遠是最後一次成功拍攝。
-
-### S-03：下載與替換競爭
-
-手機持續下載 `/latest.jpg`，同時每隔數秒拍照。通過條件：無 use-after-free、截斷 JPEG 或重啟。
-
-### S-04：上傳與重試
-
-連續上傳 30 組原圖／後製圖，過程中刻意中斷 5 次網路。通過條件：最終每個成功 photo ID 都只有一組物件與一筆 metadata，失敗項目可辨識且可重試。
-
-### S-05：相簿與直接刪除
-
-建立至少 100 筆測試 metadata，反覆分頁與執行單次永久刪除。通過條件：列表正確，無重複、漏列、越權讀取或孤兒物件。
-
-## 6. NFC、瀏覽器與整合矩陣
-
-| 平台 | 必測 |
+| 平台 | 必測內容 |
 |---|---|
-| iPhone Safari | 加入相機 Wi‑Fi、NFC／固定 IP 取圖、公開網站 Local Network Access 行為、手動選檔、待傳重試與雲端保存 |
-| Android Chrome | 加入相機 Wi‑Fi、NFC／固定 IP 取圖、公開網站 Local Network Access 行為、手動選檔、待傳重試與雲端保存 |
-| Windows／macOS Chrome | 固定 IP、mDNS、Canvas、登入、上傳、相簿與刪除 |
+| iPhone Safari | NFC 通知、`/create`、領取碼鍵盤、Canvas、下載位置、公開與 token 到期 |
+| Android Chrome | NFC 通知、`/create`、領取碼鍵盤、Canvas、下載位置、公開與 token 到期 |
+| Windows／macOS Chrome | 手動開 `/create`、claim、Canvas、公開相簿與管理員刪除 |
 
-每台確認：
+NFC 只開固定網址，不會自動輸入領取碼；相機螢幕必須提供可手動辨識的 code。V1 不使用 QR Code。
 
-- NFC 只顯示通知／網址，不會自動加入 Wi‑Fi。
-- `Cache-Control: no-cache, no-store, must-revalidate` 存在。
-- `Pragma: no-cache` 與 `Expires: 0` 存在。
-- Captive Portal、`camera.local` 與 `192.168.4.1` 至少有一個可用入口。
-- 最新 JPEG 方向與下載正確；Canvas 復古處理、拍攝日期及拍立得邊框在橫向與直向照片上皆正確。
-- 公開 HTTPS 網站不能直接取圖時，能清楚切換到下載後手動選檔。
-- 上傳完成前不顯示永久保存；完成後重新整理相簿仍可看到照片。
+## 7. 壓力與恢復
 
-## 7. 外殼與電源
+### S-01：拍照核心
 
-- 基本矩形殼 10 次拆裝後不裂。
-- 鏡頭、螢幕、快門、USB 與天線不被遮擋。
-- 1.44／1.8 吋選定模組的完整畫面可見。
-- 電池無擠壓、折線或螺絲穿刺風險。
-- 充電、保護與 5 V 升壓逐項驗證。
-- 量測實際充電電流並確認不超過電池規格。
-- 分開測試純充電、純放電；只有賣家與實測都確認時才測邊充邊用。
-- 30 次拍照＋Wi‑Fi 下載不 brownout、不異常發熱。
+預覽→拍照→PSRAM→回看，重複 100 次。無記憶體洩漏、壞圖、花屏或 reset。
+
+### S-02：熱點中斷
+
+連續 30 次裝置草稿上傳，刻意中斷熱點 5 次。所有成功 draft 僅一個 original object；失敗可識別與重試。
+
+### S-03：領取競爭
+
+對同一 code 發出 20 個並行 claim。只有一個成功，其餘得到一致失敗且不洩漏草稿資料。
+
+### S-04：發布與刪除
+
+連續發布與刪除 30 組；最終每筆 active 照片有一組 objects／metadata，刪除後無孤兒資料。
 
 ## 8. 展示前清單
 
-- [ ] 已確認買到 ESP32-S3-CAM N16R8＋OV2640
-- [ ] TTL／OTG USB-C 至少一個燒錄與供電穩定
-- [ ] 已記錄 BOOT／RESET 與 PlatformIO 的可靠燒錄方式
-- [ ] NFC 貼紙寫入 `http://192.168.4.1/latest.jpg`
-- [ ] Wi‑Fi SSID／密碼與操作卡一致
-- [ ] iPhone 與 Android 實機測過
-- [ ] 四種效果資產授權可用
-- [ ] `tiger-camera.fengyenchia.com` HTTPS、登入與私人圖片權限正常
-- [ ] 原圖／後製圖分開保存，單次永久刪除與失敗重試已測試
-- [ ] 斷網待傳、重試與下載後手動選檔備援已測試
-- [ ] Git、前端 bundle 與韌體沒有秘密或長期 token
-- [ ] 尚無照片與重新開機行為已說明
-- [ ] 備用 USB 線與行動電源
-- [ ] microSD 裝置端備援與 GIF 清楚標示為未來功能；雲端相簿屬於 V1
+- [ ] NFC 寫入 `https://tiger-camera.fengyenchia.com/create`
+- [ ] 熱點名稱／密碼只在不進 Git 的設定中
+- [ ] ESP32 螢幕能顯示上傳中、等待網路、領取碼與到期
+- [ ] iPhone 與 Android 實機完成「拍照→領取碼→NFC→後製→下載／公開」
+- [ ] 公開訪客、claim holder、device、admin 權限隔離已測試
+- [ ] 原圖／後製圖分開保存，管理員一次永久刪除與失敗重試已測試
+- [ ] 草稿逾時清理與熱點斷線重試已測試
+- [ ] Git、前端 bundle、韌體與 logs 沒有秘密或長期雲端 credentials
+- [ ] 100 次拍照與 30 次裝置上傳無 brownout、重啟或異常發熱
+- [ ] microSD 與 GIF 清楚標示為未來功能

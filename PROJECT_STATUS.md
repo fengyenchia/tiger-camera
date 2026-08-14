@@ -1,14 +1,20 @@
 # Project Status
 
-Last updated: 2026-08-12
+Last updated: 2026-08-14
 
 ## Current state
 
-Planning has been reconciled around a local-camera plus private-cloud design.
+Planning has been reconciled around a local camera, public gallery and private underlying storage design.
 No hardware has been purchased or tested and no production firmware, deployed
-website or enclosure CAD has been implemented. A local Next.js gallery prototype
-now covers a separate home page, JPEG import, gallery and one-click direct deletion
-with an in-memory demo API; authentication and persistent storage remain pending.
+website or enclosure CAD has been implemented. A local Next.js prototype now
+covers a separate home page, `/create` claim-code Demo, selectable Canvas
+processing, downloads, optional Demo publishing and a public gallery. The
+unauthenticated Demo delete control was removed until administrator
+authentication exists. Device authentication, real claim lifecycle, administrator
+authentication, IndexedDB and persistent R2／Neon storage remain pending.
+The Web code is now a pnpm workspace with independently deployable
+`web/frontend/` and `web/backend/` Next.js projects; the existing Vercel project
+still needs its Root Directory changed, and the Backend Vercel project is not yet created.
 
 ## Locked V1 decisions
 
@@ -16,15 +22,19 @@ with an in-memory demo API; authentication and persistent storage remain pending
 - Display candidate: 1.44-inch 128 × 128 or 1.8-inch 128 × 160 ST7735 SPI
 - Enclosure: basic rectangular camera shape; no tiger-head geometry
 - Capture format: original JPEG
-- High-quality retro processing: phone browser using Canvas, with capture date and a Polaroid-style border
+- High-quality retro processing: phone Canvas with independently selectable Polaroid frame, timestamp, text and retro filter; all effects may be disabled
 - Storage: latest JPEG copied to owned PSRAM; volatile across power loss
 - Capture feedback: review image plus one random on-screen phrase; no audio hardware
-- Transfer: passive NFC URL plus camera-created Wi-Fi and an offline local website
+- Connectivity: ESP32 joins a configured 2.4 GHz phone hotspot or trusted Wi-Fi; V1 does not use a camera AP, captive portal or local photo website
+- Transfer: ESP32 uploads the original JPEG as a private draft, receives a short claim code and shows it on the ST7735
+- NFC: passive tag fixed to `https://tiger-camera.fengyenchia.com/create`; it does not contain the per-photo claim code
 - Hosted site: `https://tiger-camera.fengyenchia.com`
-- Cloud storage: separate immutable original and processed JPEG objects
-- Gallery: one authenticated administrator with list and one-click permanent deletion; no V1 trash or restore
-- Web architecture: one full-stack Next.js application; `web/api/` is the browser Axios layer, while `web/app/api/` and `web/lib/server/` are the server side. Split only for independent deployment, long-running background work or multiple clients
-- Offline fallback: browser retry queue or explicit phone download; never claim a failed upload succeeded
+- Cloud storage: separate immutable original and processed JPEG objects in a private Cloudflare R2 bucket
+- Photo metadata: Neon Serverless PostgreSQL
+- Gallery: public list and photo reading; a valid claim holder may publish only the claimed photo, while one administrator can perform one-click permanent deletion; no V1 trash or restore
+- Web architecture: two independently deployable Next.js projects. `web/frontend/` contains pages, Canvas and the Axios layer; `web/backend/` contains Route Handlers, CORS and server-only R2／Neon／authentication code
+- Draft security: claim code is short-lived and exchanged for a short-lived, photo-scoped claim token; the raw code is not a permanent credential
+- Publishing choice: processing and downloads happen on the claimant's phone; a draft reaches the public gallery only when that claim holder explicitly publishes it
 - microSD: optional future device-local persistence, not required for cloud persistence
 - GIF: future backlog, not V1
 
@@ -46,23 +56,29 @@ with an in-memory demo API; authentication and persistent storage remain pending
 - Actual N16R8 and OV2640 markings
 - GPIO47／21／14 with ST7735 and GPIO1 shutter stability
 - Real current draw and runtime with an 800 mAh LiPo
-- Captive portal behavior on the target iPhone and Android phones
-- Local Network Access behavior when the public HTTPS site reads the camera's
-  HTTP endpoint; manual file import remains the required fallback
-- DNS, hosting, private object storage, database and authentication setup for
+- Stability of the selected phone hotspot, its 2.4 GHz compatibility and background timeout behavior
+- Final claim-code length, expiry, retry limits and cleanup interval after real mobile testing
+- DNS, Vercel hosting, Cloudflare R2, Neon PostgreSQL and authentication setup for
   `tiger-camera.fengyenchia.com`
 - Final module and simple enclosure dimensions
 
 ## Next milestone: Gate C0 cloud photo lifecycle
 
 - [x] Create the hosted Next.js skeleton in `web/`
-- [x] Create the Vercel project; Git deployment and domain connection remain pending
-- [ ] Deploy it and connect `tiger-camera.fengyenchia.com`
-- [ ] Configure private object storage and a photo metadata database
-- [ ] Add one-administrator authentication
-- [ ] Upload separate original and processed test JPEGs with short-lived URLs
+- [x] Split the Web workspace into `web/frontend/` and `web/backend/`
+- [x] Create the original Vercel project
+- [ ] Change the original Vercel project's Root Directory to `web/frontend`
+- [ ] Create the Backend Vercel project with Root Directory `web/backend`
+- [ ] Deploy both projects, connect `tiger-camera.fengyenchia.com` to Frontend and configure the Backend API URL／CORS origin
+- [ ] Configure a private Cloudflare R2 bucket and Neon PostgreSQL database
+- [ ] Add revocable device credentials and simulate `device initiate → original PUT → complete`
+- [ ] Add expiring claim codes, HMAC lookup, rate limiting and photo-scoped claim tokens
+- [ ] Replace the `TIGER1` Demo with private original read and processed upload／publish
+- [ ] Add one-administrator authentication using a short-lived JWT stored in localStorage and sent explicitly as an `Authorization: Bearer` header
+- [ ] Verify a claim holder can download or publish only the claimed photo without an admin account
 - [ ] Implement gallery and one-click permanent deletion against real storage
-- [ ] Verify unauthenticated users cannot list or read photos
+- [ ] Verify everyone can list active photos, while drafts remain private and only admins can delete
+- [ ] Implement expiry cleanup for uploading, ready and claimed drafts
 - [ ] Verify permanent deletion removes both objects and metadata
 
 ## Hardware milestone after Gate C0

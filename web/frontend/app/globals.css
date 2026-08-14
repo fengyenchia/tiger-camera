@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Noto Sans TC Local";
+  src: url("/fonts/NotoSansTC-VF.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  /* Reference palette: cream, coral red, pink, yellow and powder blue. */
+  --background: #fcf5ea;
+  --foreground: #4b2b28;
+  --card: #fffaf0;
+  --card-foreground: #4b2b28;
+
+  --primary: #d7473f;
+  --primary-hover: #bd3933;
+  --primary-strong: #9f332f;
+  --primary-soft: #f7d8d4;
+  --primary-foreground: #fffaf0;
+
+  --secondary: #f7d9df;
+  --secondary-hover: #f2c7d1;
+  --secondary-foreground: #7e3437;
+
+  --accent: #ffd878;
+  --accent-foreground: #674029;
+  --muted: #eee3cf;
+  --muted-foreground: #775d55;
+
+  --pink: #f5a9ba;
+  --yellow: #ffd878;
+  --blue: #a9cbd9;
+  --red-block: #d7473f;
+
+  --success: #627c5a;
+  --warning: #d79832;
+  --destructive: #b82f35;
+  --destructive-hover: #9d252c;
+  --destructive-foreground: #fffaf0;
+
+  --border: #e5b3aa;
+  --border-strong: #d86a60;
+  --ring: #d7473f;
+
+  --rounded-primary: 1.6rem;
+  --rounded-secondary: 1.2rem;
+  --rounded-small: 0.85rem;
+  --rounded-pill: 999px;
+
+  --shadow-soft-value: 0 10px 30px rgb(112 57 49 / 0.08);
+  --shadow-card-value: 0 16px 45px rgb(112 57 49 / 0.09);
+  --shadow-button-value: none;
+  --shadow-button-hover-value: none;
+  --shadow-dialog-value: 0 24px 80px rgb(75 43 40 / 0.22);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-pink: var(--pink);
+  --color-yellow: var(--yellow);
+  --color-blue: var(--blue);
+  --color-red-block: var(--red-block);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ring: var(--ring);
+
+  --radius-primary: var(--rounded-primary);
+  --radius-secondary: var(--rounded-secondary);
+  --radius-small: var(--rounded-small);
+  --radius-pill: var(--rounded-pill);
+
+  --shadow-soft: var(--shadow-soft-value);
+  --shadow-card: var(--shadow-card-value);
+  --shadow-button: var(--shadow-button-value);
+  --shadow-button-hover: var(--shadow-button-hover-value);
+  --shadow-dialog: var(--shadow-dialog-value);
+
+  --font-sans: "Noto Sans TC Local", "Noto Sans TC", sans-serif;
+  --font-display: "Noto Sans TC Local", "Noto Sans TC", sans-serif;
+  --duration-600: 600ms;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  background: var(--background);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--pink);
+  color: var(--primary-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
