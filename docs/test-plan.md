@@ -1,6 +1,6 @@
 # Tiger Camera V1 測試計畫
 
-狀態（2026-08-15）：Gate C0 的 Web API、Neon migration、R2 操作層與 Frontend 串接已實作；尚未連接真實 Neon／R2，也尚未執行雲端 E2E 與實機測試。下列項目仍是驗收清單，不代表已通過。
+狀態（2026-08-16）：使用者回報 Gate C0 所有 API 已完成開發環境測試。硬體已分別跑通 Camera 與 ST7735，並量得 16 MB Flash／8 MB PSRAM；Gate H1 合併韌體的 PlatformIO build 已通過，但尚未燒錄與實機驗證。未留下逐項結果的清單仍不得直接標示通過。
 
 實機結果要記錄日期、韌體 commit、PCB／sensor／螢幕標示、供電、Wi-Fi／熱點型號、手機／OS／瀏覽器及錯誤 log。未在實體裝置執行的項目不得標示通過。
 

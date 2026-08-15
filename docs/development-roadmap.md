@@ -28,7 +28,7 @@
 
 ## Phase 1：Gate C0 私人草稿、領取與公開生命週期
 
-目前狀態：所列 Web 程式與 migration 已實作；Cloudflare R2、Neon、Vercel Production、DNS 與真實 E2E 尚未由使用者完成，因此 Gate 尚未通過。
+目前狀態（2026-08-16）：所列 Web 程式與 migration 已實作，使用者回報所有 API 已完成開發環境測試；Vercel Production、DNS 與逐項保存清理證據仍待完成。
 
 任務：
 
@@ -66,6 +66,8 @@
 
 ## Phase 3：Gate H0 單項硬體基準
 
+目前狀態（2026-08-16）：實際標示已記錄，Camera／ST7735 已分別跑通，Flash 16 MB、PSRAM 8 MB 已由韌體讀值確認，2.4 GHz Wi-Fi 已連線；USB-C 角色與規定的連續運作時間仍需補記錄。
+
 任務：
 
 - 記錄到貨 PCB、N16R8、OV2640 與螢幕實際標示和尺寸。
@@ -77,6 +79,8 @@
 完成條件：相機與螢幕可各自連續運作 10 分鐘，且至少一個 USB-C 有可靠燒錄流程。
 
 ## Phase 4：Gate H1 GPIO 與最新照片核心
+
+目前狀態（2026-08-16）：`firmware/tiger-camera-v1/` 已建立 Camera、ST7735、GPIO1 快門、PSRAM buffer、mutex 與狀態機程式，PlatformIO production build 已通過；尚未完成燒錄與實機 10 次冷開機／30 次連拍。
 
 任務：
 

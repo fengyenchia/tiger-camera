@@ -1,18 +1,27 @@
 # Project Status
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 ## Current state
 
 Planning has been reconciled around a local camera, public gallery and private underlying storage design.
-No hardware has been purchased or tested and no production firmware, deployed
-website or enclosure CAD has been implemented. The Web code now implements the
+The core ESP32-S3-CAM, OV2640 and ST7735 hardware has arrived. The user recorded
+the actual markings, independently ran the camera and display examples, connected
+the ESP32 to a 2.4 GHz hotspot／Wi-Fi, and measured 16,777,216-byte Flash plus
+8,388,608-byte PSRAM. The formal `firmware/tiger-camera-v1/` Gate H1 PlatformIO
+project now implements camera／display coexistence, shutter debounce, an owned
+latest-JPEG PSRAM buffer and post-capture review. Its PlatformIO production build
+passes; physical upload and integration verification remain pending.
+
+The Web code implements the
 Gate C0 lifecycle: Device initiate／complete, private R2 objects, Neon metadata,
 six-character claims, opaque UUID claim tokens, Canvas finished-image upload,
 optional publication, public reading, Admin JWT, device revocation, one-click
-permanent deletion and cleanup. `/admin` provides the administrator UI. The code
-has not yet been connected to the user's real Neon, R2, Vercel Production or DNS,
-so no cloud end-to-end milestone is claimed. IndexedDB retry remains pending.
+permanent deletion and cleanup. `/admin` provides the administrator UI. Neon and
+R2 have been configured sufficiently for the user to report that all implemented
+API endpoints passed the development test flow. Production deployment／DNS and direct
+recording of every cleanup object-state assertion remain pending. IndexedDB retry
+remains pending.
 The Web code is now a pnpm workspace with independently deployable
 `web/frontend/` and `web/backend/` Next.js projects; the existing Vercel project
 still needs its Root Directory changed, and the Backend Vercel project is not yet created.
@@ -33,7 +42,7 @@ The Backend generates OpenAPI 3.0.3 from Route Handler JSDoc with
 and exposes `/api/openapi`. Server modules for Neon, R2, device／claim／admin auth,
 drafts, photos and validation are implemented. The intended production Backend
 origin is `https://api.tiger-camera.fengyenchia.com`; DNS, migration, credentials,
-deployment and physical cloud verification are still pending.
+production deployment and DNS verification are still pending.
 
 ## Locked V1 decisions
 
@@ -66,13 +75,20 @@ deployment and physical cloud verification are still pending.
 - The board does not advertise LiPo charging; the separate DIY 5 V 2 A／2.4 A
   lithium module remains the battery candidate
 
+## Measured hardware facts
+
+- 2026-08-16 firmware reading: Flash 16,777,216 bytes (16 MB)
+- 2026-08-16 firmware reading: PSRAM enabled, total 8,388,608 bytes (8 MB),
+  initially available 8,384,788 bytes
+- Actual PCB, ESP32-S3-WROOM-1-N16R8 and OV2640 markings recorded
+- Camera and ST7735 examples run successfully as separate sketches
+- ESP32 connects to the tested 2.4 GHz hotspot／Wi-Fi
+
 ## Unverified assumptions
 
-- Actual delivered PCB revision and whether both OTG and TTL USB-C programming
-  paths work with the pinned toolchain
+- Whether both OTG and TTL USB-C programming paths work with the pinned toolchain
 - Whether the separate battery module supports safe simultaneous charge and
   discharge, and whether its charge current is suitable for the selected cell
-- Actual N16R8 and OV2640 markings
 - GPIO47／21／14 with ST7735 and GPIO1 shutter stability
 - Real current draw and runtime with an 800 mAh LiPo
 - Stability of the selected phone hotspot, its 2.4 GHz compatibility and background timeout behavior
@@ -81,7 +97,7 @@ deployment and physical cloud verification are still pending.
   `tiger-camera.fengyenchia.com`
 - Final module and simple enclosure dimensions
 
-## Next milestone: Gate C0 cloud photo lifecycle
+## Gate C0 cloud photo lifecycle
 
 - [x] Create the hosted Next.js skeleton in `web/`
 - [x] Split the Web workspace into `web/frontend/` and `web/backend/`
@@ -89,19 +105,19 @@ deployment and physical cloud verification are still pending.
 - [ ] Change the original Vercel project's Root Directory to `web/frontend`
 - [ ] Create the Backend Vercel project with Root Directory `web/backend`
 - [ ] Deploy both projects, connect `tiger-camera.fengyenchia.com` to Frontend and `api.tiger-camera.fengyenchia.com` to Backend, then configure the Backend API URL／CORS origin
-- [ ] Configure a private Cloudflare R2 bucket and Neon PostgreSQL database
+- [x] Configure a private Cloudflare R2 bucket and Neon PostgreSQL database for development testing
 - [x] Implement revocable device credentials and `device initiate → original PUT → complete`
 - [x] Implement UNIQUE six-character plaintext pairing codes, 24-hour expiry, atomic first claim and draft-scoped opaque UUID tokens
 - [x] Replace the `TIGER1` Demo routes with private original read and processed upload／publish code
 - [x] Add one-administrator authentication using a short-lived JWT stored in localStorage and sent explicitly as an `Authorization: Bearer` header
 - [x] Implement claim-holder finished-image download／optional publish and `/admin`
 - [x] Implement gallery and one-click permanent deletion against Neon／R2
-- [ ] Verify everyone can list active photos, while drafts remain private and only admins can delete
+- [x] Exercise all implemented API endpoints in the user-run development test flow
 - [x] Implement expiry cleanup for uploading, ready and claimed drafts plus post-publish original cleanup
-- [ ] Execute Neon migration, configure R2 CORS／credentials, and verify every implemented API against real services
+- [x] Execute Neon migration, configure R2 CORS／credentials, and test every implemented API
 - [ ] Verify publication removes the temporary original and permanent deletion removes the finished object and metadata
 
-## Hardware milestone after Gate C0
+## Current milestone: Gate H0／H1 hardware integration
 
 - [x] Expand the BOM with recommended model/search terms, staged purchase timing,
       Shopee links and arrival checks (prices checked 2026-08-11; not ordered)
@@ -109,11 +125,18 @@ deployment and physical cloud verification are still pending.
       capture feedback is the photo review itself
 - [x] Confirm the ESP32-S3-CAM N16R8＋OV2640 option and seller pinout
 - [ ] Ask whether the separate battery board supports load sharing and adjustable charge current
-- [ ] Purchase the core validation kit only after those options are confirmed
-- [ ] Record delivered PCB, N16R8 and OV2640 markings
-- [ ] Run the official camera example
-- [ ] Run the ST7735 example
-- [ ] Update `docs/hardware.md` with measured facts
+- [x] Purchase the core validation kit
+- [x] Record delivered PCB, N16R8 and OV2640 markings
+- [x] Run the official camera example
+- [x] Run the ST7735 example
+- [x] Confirm 16 MB Flash and 8 MB PSRAM from firmware readings
+- [x] Confirm connection to a 2.4 GHz hotspot／Wi-Fi
+- [x] Create the formal `firmware/tiger-camera-v1/` Gate H1 implementation
+- [x] Build the PlatformIO project with the project-local N16R8 board definition
+- [ ] Upload the PlatformIO project to the physical board
+- [ ] Verify Camera＋ST7735＋GPIO1 shutter＋PSRAM coexistence on hardware
+- [ ] Complete 10 cold boots and 30 repeated captures
+- [x] Update `docs/hardware.md` with measured facts
 
 ## First blocking hardware gate
 

@@ -1,0 +1,8 @@
+# PlatformIO build output and editor state
+firmware/**/.pio/
+firmware/**/.vscode/
+
+# Device-local network and API credentials
+firmware/**/include/secrets.h
+firmware/**/secrets.h
+
