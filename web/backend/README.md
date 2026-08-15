@@ -44,7 +44,7 @@ pnpm build
 pnpm admin:hash-password
 ```
 
-腳本輸入會顯示在終端，請只在私人終端執行，不要錄影或分享輸出。完整雜湊填入 `ADMIN_PASSWORD_HASH`。
+腳本輸入會顯示在終端，請只在私人終端執行，不要錄影或分享輸出。腳本會分別輸出本機 `.env.local` 與 Vercel 版本：本機檔案內 bcrypt 的每個 `$` 必須寫成 `\$`，避免 Next.js 將它當成環境變數展開；Vercel Dashboard 的 Value 欄位則使用沒有反斜線的原始 hash。
 
 ## 資料庫
 

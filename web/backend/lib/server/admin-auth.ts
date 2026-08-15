@@ -17,6 +17,7 @@ export async function loginAdmin(username: string, password: string) {
   const env = getAdminEnv();
   const usernameMatches = username === env.username;
   const passwordMatches = await compare(password, env.passwordHash);
+
   if (!usernameMatches || !passwordMatches) {
     throw new ApiError("ADMIN_LOGIN_FAILED", 401);
   }
@@ -33,11 +34,13 @@ export async function loginAdmin(username: string, password: string) {
 export async function requireAdmin(request: Request) {
   const token = bearerToken(request);
   try {
-    const { payload } = await jwtVerify(token, secretKey(), { issuer, audience });
+    const { payload } = await jwtVerify(token, secretKey(), {
+      issuer,
+      audience,
+    });
     if (payload.role !== "admin") throw new Error("INVALID_ROLE");
     return payload;
   } catch {
     throw new ApiError("ADMIN_UNAUTHORIZED", 401);
   }
 }
-

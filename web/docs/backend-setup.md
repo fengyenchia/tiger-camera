@@ -213,7 +213,7 @@ R2_BUCKET_NAME=tiger-camera-photos
 R2_REGION=auto
 ADMIN_JWT_SECRET=至少_32_bytes_亂數
 ADMIN_USERNAME=你的管理員帳號
-ADMIN_PASSWORD_HASH=bcrypt_hash
+ADMIN_PASSWORD_HASH=\$2b\$12\$your_bcrypt_hash
 CRON_SECRET=另一組長亂數
 FRONTEND_ORIGIN=http://localhost:3000,https://tiger-camera.fengyenchia.com
 API_PUBLIC_URL=http://localhost:3001
@@ -221,7 +221,7 @@ API_PUBLIC_URL=http://localhost:3001
 
 這些都不能加 `NEXT_PUBLIC_`。Vercel Production／Preview／Development 要分開設定；更新後重新部署。
 
-不需要 `CLAIM_JWT_SECRET` 或 `CLAIM_CODE_HMAC_SECRET`。執行 `cd web/backend` 後使用 `pnpm admin:hash-password` 產生 bcrypt 雜湊；`ADMIN_JWT_SECRET` 與 `CRON_SECRET` 使用密碼管理器或系統安全亂數產生，不能直接填範例文字。
+不需要 `CLAIM_JWT_SECRET` 或 `CLAIM_CODE_HMAC_SECRET`。執行 `cd web/backend` 後使用 `pnpm admin:hash-password` 產生 bcrypt 雜湊；腳本會同時顯示兩種可複製格式。在本機 `.env.local` 中，bcrypt 的每個 `$` 都要寫成 `\$`，因為 Next.js 會對 env 檔做變數展開；只加引號不能解決。在 Vercel Dashboard 的 Environment Variable Value 則填原始 `$2b$...` hash，不加反斜線。`ADMIN_JWT_SECRET` 與 `CRON_SECRET` 使用密碼管理器或系統安全亂數產生，不能直接填範例文字。
 
 正式 Backend 的 `API_PUBLIC_URL` 設為 `https://api.tiger-camera.fengyenchia.com`，Frontend 的 `NEXT_PUBLIC_API_BASE_URL` 設為 `https://api.tiger-camera.fengyenchia.com/api`。
 

@@ -114,7 +114,21 @@ export async function claimDraftByCode(code: string, token: string, tokenExpires
             claim_token_expires_at = $3, claimed_at = now()
        FROM candidate
       WHERE photo.id = candidate.id AND photo.status = 'ready'
-      RETURNING ${draftColumns}`,
+      RETURNING
+        photo.id,
+        photo.device_id AS "deviceId",
+        photo.status,
+        photo.original_key AS "originalKey",
+        photo.processed_key AS "processedKey",
+        photo.claim_code AS "claimCode",
+        photo.claim_expires_at AS "claimExpiresAt",
+        photo.claim_token AS "claimToken",
+        photo.claim_token_expires_at AS "claimTokenExpiresAt",
+        photo.captured_at AS "capturedAt",
+        photo.width,
+        photo.height,
+        photo.original_size AS "originalSize",
+        photo.processed_size AS "processedSize"`,
     [code, token, tokenExpiresAt],
   );
   const draft = rows[0];
@@ -210,4 +224,3 @@ function toPhoto(row: PublishedRow): Photo {
 export function isUniqueViolation(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
-

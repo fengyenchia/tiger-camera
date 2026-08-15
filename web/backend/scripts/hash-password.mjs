@@ -10,5 +10,9 @@ if (password.length < 16) {
   console.error("管理員密碼至少需要 16 個字元。");
   process.exitCode = 1;
 } else {
-  console.log(await hash(password, 12));
+  const passwordHash = await hash(password, 12);
+  console.log("\n本機 .env.local（可直接複製）：");
+  console.log(`ADMIN_PASSWORD_HASH=${passwordHash.replaceAll("$", "\\$")}`);
+  console.log("\nVercel Environment Variables（Value 欄位，不要加反斜線）：");
+  console.log(passwordHash);
 }
