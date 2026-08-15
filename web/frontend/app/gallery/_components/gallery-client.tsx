@@ -41,7 +41,7 @@ export function GalleryClient() {
             大家都能看的相簿
           </h1>
           <p className="mt-5 max-w-5xl text-base font-semibold leading-7 text-foreground/65">
-            領取者在自己的手機完成後製，並勾選「公開到網站相簿」後，照片才會出現在這裡。目前仍是記憶體示範模式
+            領取者在自己的手機完成後製，並勾選「公開到網站相簿」後，照片才會出現在這裡
           </p>
           <p className="mt-3 min-h-6 text-sm font-extrabold text-primary" aria-live="polite">
             {message}
@@ -77,7 +77,7 @@ export function GalleryClient() {
                 <IconPhoto size={30} aria-hidden="true" />
               </span>
               <h3 className="mt-5 text-xl font-black">相簿還空空的</h3>
-              <p className="mt-2 text-sm font-semibold text-foreground/65">完成後製後，再選擇是否公開。</p>
+              <p className="mt-2 text-sm font-semibold text-foreground/65">完成後製後，再選擇是否公開</p>
             </div>
           </div>
         ) : (

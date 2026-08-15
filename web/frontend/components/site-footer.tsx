@@ -46,6 +46,12 @@ export function SiteFooter() {
             相簿
           </Link>
           <Link
+            className="rounded-pill px-4 py-3 transition-all duration-600 hover:bg-background hover:text-primary"
+            href="/admin"
+          >
+            管理
+          </Link>
+          <Link
             className="inline-flex items-center gap-2 rounded-pill px-4 py-3 transition-all duration-600 hover:bg-background hover:text-primary"
             href="https://github.com/fengyenchia/tiger-camera"
             target="_blank"

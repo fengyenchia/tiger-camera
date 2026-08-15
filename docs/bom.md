@@ -37,7 +37,7 @@
 - 沒有裝置端 JSON metadata。
 - 不能從裝置復原舊照片。
 
-這不影響手機將原圖與後製圖永久保存到 `tiger-camera.fengyenchia.com`。因此 CSV 將 4 GB microSD 列為 `required=no`、`stage=未來選配`；只有需要相機端離線備援時才加入，並重新驗證 GPIO。
+這不影響手機從雲端暫存原圖完成後製，並將完成圖永久保存到 `tiger-camera.fengyenchia.com`。因此 CSV 將 4 GB microSD 列為 `required=no`、`stage=未來選配`；只有需要相機端離線備援時才加入，並重新驗證 GPIO。
 
 ## 4. 使用者提供商品頁的判斷
 

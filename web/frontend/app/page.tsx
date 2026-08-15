@@ -4,7 +4,7 @@ import { IconArrowRight } from "@tabler/icons-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const highlights = ["NFC 快速開啟", "領取碼保護照片", "公開由你決定"];
+const highlights = ["NFC 快速開啟", "領取碼配對照片", "公開由你決定"];
 
 export default function Home() {
   return (

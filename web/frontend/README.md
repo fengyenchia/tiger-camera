@@ -1,12 +1,21 @@
 # Tiger Camera Frontend
 
-公開網站、NFC 領取、Canvas 後製與相簿 UI。這個專案不包含 Route Handlers 或 server-only secrets。
+公開網站、NFC 領取、Canvas 後製、完成圖 R2 上傳、公開相簿與管理員 UI。Frontend 不包含 Route Handlers 或 server-only secrets。
+
+## 頁面
+
+- `/`：首頁。
+- `/create`：6 位領取碼、私人原圖、Canvas 預覽、完成圖下載與可選公開。
+- `/gallery`：所有人可看的 active 完成圖。
+- `/admin`：管理員登入、建立／撤銷裝置與一次永久刪除照片。
+
+後製可獨立開關拍立得框、拍攝時間、文字與復古濾鏡，也可全部關閉。拍攝時間來自 API，不提供日期選擇器。原圖只存在目前頁面記憶體；UI 只提供完成圖下載。
 
 ```powershell
 cd web/frontend
 pnpm dev
-pnpm lint
 pnpm typecheck
+pnpm lint
 pnpm build
 ```
 
@@ -16,15 +25,12 @@ pnpm build
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
 ```
 
-正式 Vercel Root Directory：`web/frontend`。正式網域：`https://tiger-camera.fengyenchia.com`。
+正式值：
 
-設計 token 位於 `app/globals.css`。顏色只保留 `background`、`foreground`、`primary`、`secondary`、`accent` 五種，其餘狀態使用透明度；圓角只保留 `rounded-primary` 與 `rounded-pill`。
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=https://api.tiger-camera.fengyenchia.com/api
+```
 
-內文使用 Noto Sans TC；所有中英文 `h1`～`h6`、品牌名稱與英文 eyebrow 統一使用 `font-title`（Chiron GoRound TC）。
+這是唯一可公開的 API URL；R2、Neon、Admin secrets 不得放在 Frontend。Admin JWT 依既定需求保存在 localStorage，Claim UUID token 保存在 sessionStorage，兩者都由 Axios／fetch 主動放入 `Authorization: Bearer`。
 
-## Component 放置規則
-
-- 只有單一路由使用的元件，放在該路由的 `app/<route>/_components/`。
-- 多個頁面共用的網站元件，放在根層 `components/`。
-- shadcn 風格的通用 UI primitive，放在 `components/ui/`。
-- `_components` 是 App Router 的 private folder，不會產生額外網址。
+頁面專用 component 位於 `app/<route>/_components/`；跨頁網站元件位於 `components/`；shadcn-style primitive 位於 `components/ui/`。

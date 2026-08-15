@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useId, useMemo, useState } from "react";
+import { FormEvent, useEffect, useId, useState } from "react";
 import Link from "next/link";
 import {
   IconArrowRight,
@@ -11,7 +11,7 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 
-import { claimDraft, publishDraft } from "@/api/drafts";
+import { claimDraft, publishDraft, uploadProcessedPhoto } from "@/api/drafts";
 import type { ClaimedDraft } from "@/api/types";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,15 +47,6 @@ function toLocalDateTime(value: string | Date) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-function blobToDataUrl(blob: Blob) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("讀取照片失敗"));
-    reader.readAsDataURL(blob);
-  });
-}
-
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -67,6 +58,15 @@ function downloadBlob(blob: Blob, filename: string) {
 
 function randomDefaultText() {
   return DEFAULT_TEXTS[Math.floor(Math.random() * DEFAULT_TEXTS.length)];
+}
+
+async function getImageSize(blob: Blob) {
+  const image = await createImageBitmap(blob);
+  try {
+    return { width: image.width, height: image.height };
+  } finally {
+    image.close();
+  }
 }
 
 const initialOptions: ProcessingOptions = {
@@ -120,11 +120,6 @@ export function PhotoProcessor() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("掃描機身 NFC 後，輸入相機螢幕上的領取碼");
 
-  const filterLabel = useMemo(
-    () => FILTER_OPTIONS.find((item) => item.value === options.filterPreset)?.label ?? "無濾鏡",
-    [options.filterPreset],
-  );
-
   useEffect(() => {
     if (!originalBlob) return;
     let current = true;
@@ -177,8 +172,8 @@ export function PhotoProcessor() {
   async function handleClaim(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedCode = claimCode.replace(/[^a-z0-9]/gi, "").toUpperCase();
-    if (!/^[A-Z0-9]{6,8}$/.test(normalizedCode)) {
-      setMessage("請輸入相機螢幕上的 6～8 位英數領取碼");
+    if (!/^[A-Z0-9]{6}$/.test(normalizedCode)) {
+      setMessage("請輸入相機螢幕上的 6 位英數領取碼");
       return;
     }
 
@@ -223,13 +218,29 @@ export function PhotoProcessor() {
     setIsPublishing(true);
     setMessage("正在公開照片…");
     try {
-      const processedUrl = await blobToDataUrl(processedBlob);
+      const { width, height } = await getImageSize(processedBlob);
+      await uploadProcessedPhoto(draft.id, draft.claimToken, processedBlob);
+      const textMode = options.textEnabled ? options.textMode : "none";
+      const resolvedText = options.textEnabled
+        ? options.textMode === "custom"
+          ? options.customText.trim()
+          : options.defaultText
+        : null;
       await publishDraft(draft.id, draft.claimToken, {
         title: title.trim() || "今天的照片",
-        processedUrl,
-        filterPreset: filterLabel,
+        processedSize: processedBlob.size,
+        width,
+        height,
+        frameEnabled: options.frameEnabled,
+        timestampEnabled: options.timestampEnabled,
+        textMode,
+        customText: textMode === "custom" ? options.customText.trim() : null,
+        resolvedText,
+        filterPreset: options.filterPreset,
+        processingVersion: "canvas-v1",
       });
-      setMessage("已加入示範公開相簿；正式版會保存到 R2 與 Neon");
+      window.sessionStorage.removeItem(`tiger_camera_claim_${draft.id}`);
+      setMessage("完成圖已保存並加入公開相簿");
     } catch {
       setMessage("公開沒有完成，仍可先下載照片後再重試");
     } finally {
@@ -245,7 +256,7 @@ export function PhotoProcessor() {
           輸入領取碼，帶走你的照片
         </h1>
         <p className="mt-5 max-w-5xl text-base font-semibold leading-7 text-foreground/65">
-          相機會透過網路先把原圖保存成私人草稿。掃描機身 NFC 開啟此頁，再輸入螢幕上的領取碼，就能在自己的手機後製與下載
+          相機會透過網路先把原圖暫存成私人草稿。掃描機身 NFC 開啟此頁，再輸入螢幕上的領取碼，就能在自己的手機後製並下載完成圖
         </p>
       </header>
 
@@ -266,21 +277,21 @@ export function PhotoProcessor() {
             </span>
             <CardTitle>領取私人草稿</CardTitle>
             <CardDescription>
-              領取碼只對應一張照片，逾時或成功領取後即失效。Demo 可輸入 TIGER1。
+              領取碼只是 6 位照片配對碼，不是安全密碼；24 小時逾時或成功領取後即失效。
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={(event) => void handleClaim(event)}>
               <label className="block text-sm font-extrabold">
-                6～8 位領取碼
+                6 位領取碼
                 <input
                   autoCapitalize="characters"
                   autoComplete="one-time-code"
                   inputMode="text"
-                  maxLength={8}
+                  maxLength={6}
                   value={claimCode}
                   onChange={(event) => setClaimCode(event.target.value.toUpperCase())}
-                  placeholder="例如 TIGER1"
+                  placeholder="例如 A4F92C"
                   className="mt-2 h-14 w-full rounded-primary border border-primary/25 bg-background px-4 text-center text-xl font-black tracking-[0.2em] uppercase outline-none transition-all duration-600 placeholder:tracking-normal focus:border-primary"
                 />
               </label>
@@ -302,7 +313,7 @@ export function PhotoProcessor() {
             <CardHeader>
               <CardTitle>你的私人照片</CardTitle>
               <CardDescription>
-                領取後仍是私人狀態；下載不等於公開，只有勾選公開才會加入相簿。
+                領取後仍是私人狀態；下載完成圖不等於公開，只有勾選公開才會加入相簿。
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -320,25 +331,11 @@ export function PhotoProcessor() {
 
               <div className="mt-5 flex flex-wrap gap-3">
                 <Button
-                  variant="ghost"
-                  disabled={!originalBlob}
-                  onClick={() =>
-                    originalBlob &&
-                    downloadBlob(
-                      originalBlob,
-                      `${title}-original.${draft.demoMode ? "svg" : "jpg"}`,
-                    )
-                  }
-                >
-                  <IconDownload aria-hidden="true" />
-                  下載原圖
-                </Button>
-                <Button
                   disabled={!processedBlob || isProcessing}
-                  onClick={() => processedBlob && downloadBlob(processedBlob, `${title}-processed.jpg`)}
+                  onClick={() => processedBlob && downloadBlob(processedBlob, `${title}-finished.jpg`)}
                 >
                   {isProcessing ? <IconRefresh className="animate-spin motion-reduce:animate-none" /> : <IconDownload />}
-                  下載後製圖
+                  下載完成圖
                 </Button>
               </div>
             </CardContent>
@@ -461,7 +458,7 @@ export function PhotoProcessor() {
                   onClick={() => void handlePublish()}
                 >
                   {isPublishing ? <IconRefresh className="animate-spin motion-reduce:animate-none" /> : <IconCloudUpload />}
-                  {isPublishing ? "公開中" : "公開到示範相簿"}
+                  {isPublishing ? "公開中" : "公開到網站相簿"}
                 </Button>
                 <Link href="/gallery" className={cn(buttonVariants({ variant: "ghost" }), "w-full")}>
                   查看公開相簿

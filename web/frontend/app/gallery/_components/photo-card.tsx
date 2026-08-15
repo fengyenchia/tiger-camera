@@ -2,6 +2,14 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import type { Photo } from "@/api/types";
 
+const filterLabels: Record<Photo["filterPreset"], string> = {
+  none: "無濾鏡",
+  "tiger-film": "Tiger Film",
+  "jungle-green": "Jungle Green",
+  "baby-tiger": "Baby Tiger",
+  "night-hunter": "Night Hunter",
+};
+
 const backgroundClasses = [
   "bg-primary",
   "bg-secondary",
@@ -31,16 +39,16 @@ export function PhotoCard({ photo, eager = false }: PhotoCardProps) {
         className={`relative aspect-square overflow-hidden rounded-primary ${backgroundClasses[colorIndex % backgroundClasses.length]}`}
       >
         <Image
-          src={photo.processedUrl}
+          src={photo.imageUrl}
           alt={photo.title}
           fill
           loading={eager ? "eager" : "lazy"}
-          unoptimized={photo.processedUrl.startsWith("data:")}
+          unoptimized={photo.imageUrl.startsWith("data:") || photo.imageUrl.startsWith("http")}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover transition-all duration-600 group-hover:scale-105 motion-reduce:transition-none"
         />
         <Badge className="absolute left-3 top-3 bg-background/85 text-primary" variant="outline">
-          {photo.filterPreset}
+          {filterLabels[photo.filterPreset]}
         </Badge>
       </div>
 

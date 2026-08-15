@@ -6,8 +6,8 @@ Build a compact camera around the AroundTW／GOOUUU ESP32-S3-CAM board using an
 ESP32-S3-WROOM-1-N16R8 module and OV2640 camera.
 
 - Use a basic rectangular camera enclosure with a small ST7735 SPI display.
-- A short shutter press captures and stores a JPEG, then reviews it with one
-  random on-screen tiger phrase.
+- A short shutter press captures a JPEG and reviews the photo without a random
+  phrase; the next successful capture replaces the device's previous JPEG.
 - The ESP32 joins a configured 2.4 GHz phone hotspot or trusted Wi-Fi network; it does not serve the V1 user flow as an access point.
 - The phone performs the high-quality retro processing and JPEG export.
 - The ESP32 uploads each capture as a private draft, then displays a short claim code.
@@ -24,13 +24,13 @@ V1 includes:
 - short-press JPEG capture
 - one latest JPEG kept temporarily in PSRAM
 - post-capture review
-- post-capture review with five random on-screen tiger phrases
+- post-capture photo review without random text
 - battery and charging states
 - Wi-Fi station connection to a configured 2.4 GHz phone hotspot or trusted network, with reconnect and upload retry
 - private draft upload using a revocable, device-scoped credential
-- short, expiring, single-photo claim codes shown on the camera display
+- six-character, 24-hour, single-photo pairing codes shown on the camera display
 - passive NFC fixed URL access to `/create` and Canvas-based retro processing on the claimant's phone
-- downloadable original and processed JPEGs
+- downloadable finished JPEGs
 - claim-holder upload of a processed JPEG and explicit publication of that claimed photo
 - public cloud gallery with administrator-only one-click permanent deletion
 - simple 3D-printable camera enclosure
@@ -80,17 +80,25 @@ Do not begin detailed enclosure work before that gate passes.
 - Copy the camera framebuffer into owned PSRAM before returning it to the camera
   driver; never retain a returned framebuffer pointer.
 - Protect the latest JPEG buffer against concurrent capture and HTTP reads.
-- Preserve original and processed JPEGs as separate immutable cloud objects.
+- Keep the original JPEG only as a private temporary draft required for claiming
+  and browser processing. Permanently retain only the finished JPEG; delete the
+  temporary original after successful publication or draft expiry.
 - Treat microSD as optional device-local persistence; the Cloudflare R2 gallery
   objects and Neon PostgreSQL metadata are V1 scope.
 - Never expose storage credentials, database credentials or long-lived upload
   tokens to the browser or firmware. Use short-lived, path-scoped upload URLs.
-- Do not report a photo as permanently saved until both objects and metadata are
-  confirmed. Keep a retry or download fallback when internet access is absent.
+- Do not report a photo as permanently saved until the finished object and
+  metadata are confirmed. Keep a retry or finished-image download fallback when
+  internet access is absent.
 - Treat Wi-Fi failure as non-fatal to the core camera.
 - Never store administrator JWTs, R2 credentials or Neon credentials in firmware. Firmware may store only a revocable device-scoped upload credential.
 - A draft must remain private until its claim holder explicitly publishes it.
-- Claim codes must be high-entropy, short-lived, rate-limited and exchanged for a photo-scoped short-lived claim token; do not use the code as a permanent credential.
+- Claim codes are convenience pairing codes, not a security boundary. Store each
+  six-character code directly with a UNIQUE constraint and 24-hour expiry; on
+  the first successful claim, clear it and issue a database-backed opaque UUID
+  Bearer token scoped to that draft. Do not use a claim JWT, HMAC or claim-code
+  brute-force protection in V1. Administrator JWT and device credential security
+  remain required.
 - Keep secrets, real Wi-Fi passwords and admin PINs out of Git.
 - Do not commit unlicensed fonts, graphics or third-party 3D assets.
 - Update relevant docs and `PROJECT_STATUS.md` when a hardware assumption is

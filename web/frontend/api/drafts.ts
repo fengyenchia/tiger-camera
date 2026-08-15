@@ -1,11 +1,33 @@
+import axios from "axios";
+
 import { apiClient } from "@/api/common";
-import type { ClaimedDraft, Photo, PublishDraftInput } from "@/api/types";
+import type {
+  ClaimedDraft,
+  Photo,
+  PublishDraftInput,
+  UploadInstruction,
+} from "@/api/types";
 
 export async function claimDraft(code: string) {
   const { data } = await apiClient.post<{ draft: ClaimedDraft }>("/drafts/claim", {
     code,
   });
   return data.draft;
+}
+export async function uploadProcessedPhoto(
+  draftId: string,
+  claimToken: string,
+  blob: Blob,
+) {
+  const { data } = await apiClient.post<UploadInstruction>(
+    `/drafts/${draftId}/process/initiate`,
+    { processedSize: blob.size },
+    { headers: { Authorization: `Bearer ${claimToken}` } },
+  );
+  await axios.put(data.upload.url, blob, {
+    headers: data.upload.headers,
+    timeout: 60_000,
+  });
 }
 
 export async function publishDraft(

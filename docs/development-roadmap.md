@@ -9,7 +9,7 @@
 - 依 ESP32-S3-CAM pinout 避開相機、PSRAM、SD、USB 與 strapping 腳位。
 - ESP32 以 Wi-Fi station 連手機熱點／可信任 Wi-Fi，不建立使用者 AP 或區域照片網站。
 - 私人原圖先由裝置上傳；NFC 固定進 `/create`，領取碼只顯示於相機螢幕。
-- 原圖與後製圖分開保存，任何濾鏡都不得覆寫原圖。
+- 原圖只作為私人草稿與瀏覽器後製來源；公開成功或草稿逾期後刪除，永久保存完成圖。
 - 無網路時仍可拍照與回看；未完成裝置上傳不得顯示領取碼或「已保存」。
 - 基本矩形外殼在電子尺寸、供電與 RF 實測後才畫。
 - GIF、影片、公開註冊、多使用者社群、microSD 裝置端相簿與角色外殼不屬於 V1。
@@ -22,18 +22,26 @@
 - 在 `web/frontend/` 與 `web/backend/` 建立兩個 Next.js App Router 專案；以 pnpm workspace 統一執行檢查。
 - 建立環境變數範例，但不提交真實密鑰、管理員密碼或資料庫 URL。
 - 建立最小 CI／本機檢查：format、lint、typecheck、test、production build。
-- 分別部署 Frontend／Backend；Frontend 綁定 `tiger-camera.fengyenchia.com`，並設定 Backend URL、CORS 與各自的環境變數。
+- 分別部署 Frontend／Backend；Frontend 綁定 `tiger-camera.fengyenchia.com`，Backend 綁定 `api.tiger-camera.fengyenchia.com`，並設定 CORS 與各自的環境變數。
 
 完成條件：本機與部署環境均能顯示健康檢查頁；production build 通過；Git 中沒有秘密。
 
 ## Phase 1：Gate C0 私人草稿、領取與公開生命週期
 
+目前狀態：所列 Web 程式與 migration 已實作；Cloudflare R2、Neon、Vercel Production、DNS 與真實 E2E 尚未由使用者完成，因此 Gate 尚未通過。
+
 任務：
 
 - 建立私人 Cloudflare R2 bucket 與 Neon Serverless PostgreSQL。
-- 建立 `devices`／`photos` migration，包含 `uploading／ready／claimed／active／deleting`。
-- 建立 device credential hash、裝置 initiate／complete 與原圖 presigned PUT。
-- 建立安全領取碼、HMAC hash、期限、rate limit 與 photo-scoped claim token。
+- 執行已建立的 `devices`／`photos` migration，包含 `uploading／ready／claimed／active／deleting`。
+    - uploading：相機正在上傳原圖至 Cloudflare R2。
+    - ready：原圖已上傳完畢，產生領取碼，等待使用者領取。
+    - claimed：使用者已輸入領取碼，正在手機 Canvas 上進行編輯。
+    - active：使用者完成後製並確認公開，照片正式展示於公開相簿。
+    - deleting：管理員刪除或逾時清理機制正在將暫存原圖/照片從雲端移除。
+
+- 驗證已實作的 device credential hash、裝置 initiate／complete 與原圖 presigned PUT。
+- 驗證已實作的 UNIQUE 6 位明碼、24 小時期限、原子單次領取與 draft-scoped opaque UUID token。
 - 以固定測試 JPEG 模擬裝置上傳，於 `/create` 領取後執行 Canvas。
 - Claim holder 選擇公開後上傳 processed JPEG；公開相簿頁不需登入。
 - 完成單一管理員登入、裝置撤銷、草稿清理與單次操作永久刪除。
@@ -41,8 +49,8 @@
 完成條件：
 
 - 一張測試 JPEG 能完成「裝置私人上傳→領取碼→手機後製→可選公開→單次永久刪除」。
-- 無 code/token 不能讀私人草稿；claim token 只能發布同一張照片；管理員 JWT 才能永久刪除。
-- 永久刪除後，兩個物件與 metadata 都不存在。
+- 沒有有效 UUID token 不能呼叫草稿 API；UUID token 只能發布同一張照片；管理員 JWT 才能永久刪除。配對碼本身不作為安全邊界。
+- 發布後暫存原圖不存在；管理員永久刪除後，完成圖與 metadata 都不存在。
 - 相同 `clientRequestId` 重試不會產生重複照片。
 
 ## Phase 2：商品確認與第一批採購
@@ -77,7 +85,7 @@
 - 將 JPEG 複製到自有 PSRAM buffer，再歸還相機 framebuffer。
 - 用 mutex 保護捕捉、顯示與裝置上傳讀取。
 - 實作 `LIVE_VIEW → CAPTURING → COPYING → REVIEW` 狀態機。
-- 五句隨機文字避免連續重複；錯誤時保留上一張有效照片。
+- 成功時只顯示剛拍照片；錯誤時顯示錯誤狀態，不加入隨機文字。
 
 完成條件：冷開機 10 次、連拍 30 次皆無 boot 失敗、花屏、壞圖、use-after-free 或重啟。
 
@@ -97,11 +105,11 @@
 
 任務：
 
-- 保留原始 Blob，讓使用者獨立複選拍立得框、時間戳記、文字與復古濾鏡，並產生獨立後製 Blob；允許全部不選。
+- 保留原始 Blob，讓使用者獨立開關拍立得框、拍攝時間、文字與復古濾鏡，並產生獨立後製 Blob；拍攝時間自動取自照片 metadata、不提供日期選擇器，且允許全部不選。
 - 文字支援自訂、預設與無文字，metadata 保存實際畫出的文字及所有後製選項。
 - 處理直向、橫向、低光、大圖記憶體與 JPEG 輸出。
 - 在 hosted site 建立 claim token session、processed 待傳佇列與 `pending／uploading／saved／failed` UI。
-- 提供原圖、後製圖下載與「是否公開」選項；未選公開時不得呼叫 process upload／publish API。
+- 提供完成圖下載與「是否公開」選項；不提供原圖下載，未選公開時不得呼叫 process upload／publish API。
 
 完成條件：landscape、portrait、low-light fixtures 輸出正確；清楚區分「下載完成」「待上傳」與「已永久保存」。
 
@@ -110,8 +118,8 @@
 任務：
 
 - 掃 NFC 進 hosted `/create`，輸入 ST7735 顯示的領取碼。
-- Server 原子地將 `ready → claimed` 並簽發短效 photo-scoped claim token。
-- hosted site 以 claim token 讀取私人原圖，執行 Canvas 並提供下載；不公開時流程在此結束。
+- Server 以 UNIQUE 6 位明碼原子地將 `ready → claimed`，清除配對碼並寫入 draft-scoped opaque UUID token。
+- hosted site 以 claim token 暫時讀取私人原圖，執行 Canvas 並提供完成圖下載；不公開時流程在此結束，草稿由期限清理。
 - 領取者勾選公開後，接上 `process initiate → PUT processed → publish`。
 - 實作失敗重試、重複請求 idempotency 與明確錯誤訊息。
 - 驗證 ESP32、claim holder 與 Admin 三種 token scope 完全隔離。
@@ -147,15 +155,15 @@
 | H0 | 是否收到 N16R8＋OV2640，且 USB-C 可燒錄？ | 換貨或修正板型設定，不沿用 AI-Thinker pinout |
 | H1 | 相機＋ST7735＋快門＋PSRAM 可共存？ | 降 TFT clock、調整 reset／CS／GPIO 或降低 JPEG 規格 |
 | L0 | 手機熱點重連、裝置上傳與螢幕領取碼是否可靠？ | 加強重試／狀態；若要保留多張離線照片則重新評估 microSD |
-| W0 | Canvas 與待傳佇列能保留原圖？ | 停止雲端整合，修正 Blob、IndexedDB 與狀態 UI |
-| I0 | 領取碼交換、claim token 與可選發布是否安全可恢復？ | 修正期限、rate limit、idempotency 與 scope，不放寬為公開草稿 |
+| W0 | Canvas 能在頁面期間安全持有原始 Blob？ | 停止雲端整合，修正 Blob 生命週期與狀態 UI |
+| I0 | 配對碼交換、UUID token 與可選發布是否可恢復？ | 修正期限、UNIQUE collision、原子領取、idempotency 與 draft 綁定 |
 | P0 | 電池供電完整且穩定？ | 補 5 V 升壓／保護或維持 USB 供電 |
 | E0 | 殼內 Wi-Fi、散熱與維修性合格？ | 移天線、電池與開孔位置 |
 
 ## 目前工作清單
 
 1. 完成 `web/frontend/`、`web/backend/` pnpm workspace 與 Backend health endpoint。
-2. 建立兩個 Vercel projects，部署並設定 Frontend 網域、Backend URL 與 CORS。
+2. 建立兩個 Vercel projects，部署並設定 Frontend 網域、`api.tiger-camera.fengyenchia.com` 與 CORS。
 3. 完成 Gate C0 的登入、測試 JPEG、相簿與刪除生命週期。
 4. Gate C0 通過後才下單硬體核心驗證包。
 5. 到貨後依 Phase 3 至 Phase 7 逐 Gate 前進。
