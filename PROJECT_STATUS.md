@@ -11,7 +11,16 @@ the ESP32 to a 2.4 GHz hotspot／Wi-Fi, and measured 16,777,216-byte Flash plus
 8,388,608-byte PSRAM. The formal `firmware/tiger-camera-v1/` Gate H1 PlatformIO
 project now implements camera／display coexistence, shutter debounce, an owned
 latest-JPEG PSRAM buffer and post-capture review. Its PlatformIO production build
-passes; physical upload and integration verification remain pending.
+passes. Physical testing now confirms OV2640 PID `0x26`, GPIO1 idle HIGH and
+latched shutter events, successful VGA JPEG capture into owned PSRAM, and a
+3–5-second review. Preview and capture both remain at VGA so their automatic
+white balance and color match. The tested ST7735 is locked to `INITR_REDTAB`
+／BGR with inversion off; status text remains upright with a 3 px right／up
+offset, while JPEG output keeps its original orientation, center-crops 160 × 120
+to 96 × 120 and scales to the 128 × 160 display. The user confirmed the final
+direction and preview／capture colors are correct. The user then completed 10
+cold boots and 30 repeated captures without reporting boot failure, corrupted
+JPEG, display artifacts, PSRAM decline or reset. Gate H1 is passed.
 
 The Web code implements the
 Gate C0 lifecycle: Device initiate／complete, private R2 objects, Neon metadata,
@@ -83,13 +92,19 @@ production deployment and DNS verification are still pending.
 - Actual PCB, ESP32-S3-WROOM-1-N16R8 and OV2640 markings recorded
 - Camera and ST7735 examples run successfully as separate sketches
 - ESP32 connects to the tested 2.4 GHz hotspot／Wi-Fi
+- Combined Gate H1 firmware renders a continuous Camera＋ST7735 live preview
+- GPIO1 press reaches the `CAPTURING` state on the combined firmware
+- A physical capture reaches the timed review state without a reported reset
+- 2026-08-16 combined-firmware Serial: OV2640 PID `0x26`, tuning applied,
+  GPIO1 idle HIGH, press latched, JPEG 20,174 bytes, free PSRAM 8,242,243 bytes
 
 ## Unverified assumptions
 
 - Whether both OTG and TTL USB-C programming paths work with the pinned toolchain
 - Whether the separate battery module supports safe simultaneous charge and
   discharge, and whether its charge current is suitable for the selected cell
-- GPIO47／21／14 with ST7735 and GPIO1 shutter stability
+- Actual lens focus and original VGA JPEG sharpness; a 128 × 160 TFT preview is
+  not sufficient evidence that the stored JPEG itself is out of focus
 - Real current draw and runtime with an 800 mAh LiPo
 - Stability of the selected phone hotspot, its 2.4 GHz compatibility and background timeout behavior
 - Real mobile experience of the locked 6-character／24-hour pairing code and daily Hobby cleanup interval
@@ -117,7 +132,7 @@ production deployment and DNS verification are still pending.
 - [x] Execute Neon migration, configure R2 CORS／credentials, and test every implemented API
 - [ ] Verify publication removes the temporary original and permanent deletion removes the finished object and metadata
 
-## Current milestone: Gate H0／H1 hardware integration
+## Completed milestone: Gate H0／H1 hardware integration
 
 - [x] Expand the BOM with recommended model/search terms, staged purchase timing,
       Shopee links and arrival checks (prices checked 2026-08-11; not ordered)
@@ -133,23 +148,18 @@ production deployment and DNS verification are still pending.
 - [x] Confirm connection to a 2.4 GHz hotspot／Wi-Fi
 - [x] Create the formal `firmware/tiger-camera-v1/` Gate H1 implementation
 - [x] Build the PlatformIO project with the project-local N16R8 board definition
-- [ ] Upload the PlatformIO project to the physical board
-- [ ] Verify Camera＋ST7735＋GPIO1 shutter＋PSRAM coexistence on hardware
-- [ ] Complete 10 cold boots and 30 repeated captures
+- [x] Upload the PlatformIO project to the physical board
+- [x] Verify Camera＋ST7735＋GPIO1 shutter＋PSRAM coexistence on hardware
+- [x] Complete 10 cold boots and 30 repeated captures
 - [x] Update `docs/hardware.md` with measured facts
 
-## First blocking hardware gate
+## Gate H1 result
 
-Prove that camera capture, ST7735 updates, shutter input and copying the latest
-JPEG into owned PSRAM can coexist for 30 repeated cycles without corrupted
-images, display artifacts or resets.
-
-If the gate fails, try in order:
-
-1. verify the seller pinout and avoid boot, USB, PSRAM, SD and camera pins
-2. lower TFT clock and reduce full-screen updates
-3. tie TFT reset to board reset or use a no-CS configuration to save GPIO
-4. restore microSD only after the minimal configuration passes
+Passed on physical hardware: camera capture, ST7735 updates, GPIO1 shutter and
+the owned latest-JPEG PSRAM buffer coexisted for 10 cold boots and 30 repeated
+captures without a reported failure. The next milestone is Gate L0: Wi-Fi
+station reconnect plus `device initiate → PUT original → complete` and claim-code
+display, while keeping offline camera capture non-fatal.
 
 ## Budget
 

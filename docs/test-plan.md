@@ -1,6 +1,6 @@
 # Tiger Camera V1 測試計畫
 
-狀態（2026-08-16）：使用者回報 Gate C0 所有 API 已完成開發環境測試。硬體已分別跑通 Camera 與 ST7735，並量得 16 MB Flash／8 MB PSRAM；Gate H1 合併韌體的 PlatformIO build 已通過，但尚未燒錄與實機驗證。未留下逐項結果的清單仍不得直接標示通過。
+狀態（2026-08-16）：使用者回報 Gate C0 所有 API 已完成開發環境測試。硬體已分別跑通 Camera 與 ST7735，並量得 16 MB Flash／8 MB PSRAM。Gate H1 合併韌體 Serial 為 OV2640 PID `0x26`、tuning applied、GPIO1 idle HIGH／press latched，成功保存 20,174-byte JPEG 後剩餘 8,242,243-byte PSRAM。實機確認 REDTAB／BGR、inversion off、文字與照片方向正確，固定 VGA 後預覽與拍照顏色一致。10 次冷開機與 30 次連拍全部成功，Gate H1 通過。
 
 實機結果要記錄日期、韌體 commit、PCB／sensor／螢幕標示、供電、Wi-Fi／熱點型號、手機／OS／瀏覽器及錯誤 log。未在實體裝置執行的項目不得標示通過。
 
@@ -40,6 +40,10 @@
 
 ## 3. Gate H1：拍照核心
 
+**實機結果（2026-08-16）：PASS。** F-01～F-12 已完成核心與顯示驗證；
+其中 F-06 冷開機 10 次、F-07 連拍 30 次皆成功。未回報 boot failure、
+壞 JPEG、display artifact、PSRAM 持續下降或 reset。
+
 | ID | 測試 | 通過條件 |
 |---|---|---|
 | F-01 | 短按快門 | 每次只觸發一張，debounce 正確 |
@@ -49,6 +53,11 @@
 | F-05 | 無音訊 | 無喇叭、放大器或虎叫相關 GPIO／程式 |
 | F-06 | 冷開機 | 10 次無 boot failure、花屏或錯誤腳位狀態 |
 | F-07 | 連拍 | 30 次拍攝無壞 JPEG、display artifact 或 reset |
+| F-08 | 快門診斷 | 啟動時 Serial 為 `GPIO1 idle=HIGH`；每次按下都有一筆 `press latched`，BOOT／GPIO0 不視為快門 |
+| F-09 | 曝光與色彩 | 在相同室內光源比較相機原始 JPEG 與 TFT；原圖曝光／白平衡可接受，TFT 不應明顯偏灰或錯色 |
+| F-10 | 直式一致構圖 | 文字維持已確認方向；VGA 預覽與回看皆保留 JPEG 原方向，中央裁為 4:5 後等比例填滿 128 × 160，不以順／逆時針互換造成 180°跳轉 |
+| F-11 | 清晰度來源 | 分別檢查 TFT 與原始 VGA JPEG；移除鏡頭保護膜並確認焦點後，才能判定是否需要調整鏡頭，而非以低解析 TFT 單獨判定 |
+| F-12 | 色彩來源 | BLACKTAB 實測為藍綠紅白，改用 REDTAB 後開機色條應鮮明且由左至右為紅、綠、藍、白；色條正確而相機偏色才調 sensor／AWB |
 
 ## 4. Gate L0：手機熱點與裝置上傳
 

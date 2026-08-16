@@ -39,6 +39,14 @@ void printMemoryReport() {
                 static_cast<unsigned>(ESP.getPsramSize()));
   Serial.printf("[board] psram free: %u bytes\n",
                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
+  Serial0.printf("[board] flash: %u bytes\n",
+                 static_cast<unsigned>(ESP.getFlashChipSize()));
+  Serial0.printf("[board] psram detected: %s\n", psramFound() ? "yes" : "no");
+  Serial0.printf("[board] psram total: %u bytes\n",
+                 static_cast<unsigned>(ESP.getPsramSize()));
+  Serial0.printf(
+      "[board] psram free: %u bytes\n",
+      static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
 }
 
 void showLatestPhoto() {
@@ -63,19 +71,29 @@ void capturePhoto() {
   enterState(CameraState::capturing);
   display.showStatus("CAPTURING");
 
-  if (!camera.setFrameSize(AppConfig::captureFrameSize)) {
+  if (AppConfig::captureFrameSize != AppConfig::previewFrameSize &&
+      !camera.setFrameSize(AppConfig::captureFrameSize)) {
     display.showStatus("CAMERA ERROR", "resolution");
     enterState(CameraState::error);
     return;
   }
 
-  delay(120);
-  camera.flushFrames(2);
+  // Preview already runs at VGA, so white balance remains settled. Discard one
+  // queued frame to capture a frame produced after the shutter press.
+  camera.flushFrames(1);
   camera_fb_t* frame = camera.acquireFrame();
   if (frame == nullptr || frame->format != PIXFORMAT_JPEG || frame->len == 0) {
+    const char* reason = frame == nullptr
+                             ? "no framebuffer"
+                             : (frame->format != PIXFORMAT_JPEG ? "not JPEG"
+                                                                : "empty JPEG");
+    Serial.printf("[photo] capture failed: %s\n", reason);
+    Serial0.printf("[photo] capture failed: %s\n", reason);
     camera.releaseFrame(frame);
-    camera.setFrameSize(AppConfig::previewFrameSize);
-    display.showStatus("CAPTURE ERROR");
+    if (AppConfig::captureFrameSize != AppConfig::previewFrameSize) {
+      camera.setFrameSize(AppConfig::previewFrameSize);
+    }
+    display.showStatus("CAPTURE ERROR", reason);
     enterState(CameraState::error);
     return;
   }
@@ -86,8 +104,10 @@ void capturePhoto() {
 
   // The camera framebuffer is returned only after the JPEG is fully copied.
   camera.releaseFrame(frame);
-  camera.setFrameSize(AppConfig::previewFrameSize);
-  camera.flushFrames(2);
+  if (AppConfig::captureFrameSize != AppConfig::previewFrameSize) {
+    camera.setFrameSize(AppConfig::previewFrameSize);
+    camera.flushFrames(2);
+  }
 
   if (!copied) {
     display.showStatus("PSRAM ERROR", "old photo kept");
@@ -99,6 +119,10 @@ void capturePhoto() {
                 static_cast<unsigned>(capturedSize),
                 static_cast<unsigned>(
                     heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
+  Serial0.printf("[photo] captured %u bytes; free PSRAM %u bytes\n",
+                 static_cast<unsigned>(capturedSize),
+                 static_cast<unsigned>(
+                     heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
   showLatestPhoto();
 }
 
@@ -116,9 +140,23 @@ void drawLivePreview() {
 
 void setup() {
   Serial.begin(115200);
+  
+  // 等待 USB 串口連線成功（最多等 3 秒避免卡死）
+  unsigned long start = millis();
+  while (!Serial && (millis() - start < 3000)) {
+      delay(10);
+  }
+  
+  Serial.println("ESP32-S3 Camera Booting...");
+    
+  // Serial is native USB CDC on the OTG connector; Serial0 is UART0 on the
+  // board's CH340/TTL connector. Mirror diagnostics to both during Gate H1.
+  Serial0.begin(115200);
   delay(800);
 
   display.begin();
+  display.showColorTest();
+  delay(1000);
   display.showStatus("TIGER CAMERA", "Gate H1");
   printMemoryReport();
 
@@ -141,6 +179,7 @@ void setup() {
   shutter.begin();
   display.showStatus("READY", "press shutter");
   delay(500);
+  shutter.discardPending();
   enterState(CameraState::liveView);
 }
 
@@ -161,6 +200,8 @@ void loop() {
 
   if (state == CameraState::review &&
       now - stateStartedMs >= AppConfig::reviewDurationMs) {
+    // Capturing and review intentionally ignore presses and switch bounce.
+    shutter.discardPending();
     enterState(CameraState::liveView);
     return;
   }
@@ -170,10 +211,10 @@ void loop() {
     if (esp_camera_sensor_get() != nullptr) {
       camera.setFrameSize(AppConfig::previewFrameSize);
       camera.flushFrames(2);
+      shutter.discardPending();
       enterState(CameraState::liveView);
     }
   }
 
   delay(5);
 }
-

@@ -80,7 +80,7 @@
 
 ## Phase 4：Gate H1 GPIO 與最新照片核心
 
-目前狀態（2026-08-16）：`firmware/tiger-camera-v1/` 已建立 Camera、ST7735、GPIO1 快門、PSRAM buffer、mutex 與狀態機程式，PlatformIO production build 已通過；尚未完成燒錄與實機 10 次冷開機／30 次連拍。
+目前狀態（2026-08-16）：Gate H1 已通過。`firmware/tiger-camera-v1/` 已燒錄，Camera＋ST7735 即時預覽、GPIO1 中斷拍照、VGA JPEG PSRAM 保存與 3～5 秒回看皆已跑通。Serial 確認 OV2640 PID `0x26`、tuning applied、GPIO1 idle HIGH／press latched，以及 20,174-byte JPEG 成功保存後剩餘 8,242,243-byte PSRAM。REDTAB／BGR、inversion off、直式文字、JPEG 原方向中央 4:5 裁切與 VGA 預覽／拍照固定模式已由實機確認：最終方向正確，預覽與拍照顏色一致。10 次冷開機與 30 次連拍全部成功，未回報 boot failure、花屏、壞圖、PSRAM 持續下降或重啟；下一步進入 Gate L0。
 
 任務：
 

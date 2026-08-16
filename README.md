@@ -1,4 +1,4 @@
-# Tiger Camera
+# [Tiger Camera](https://tiger-camera.fengyenchia.com/)
 
 一台採用基本矩形相機外殼的小型數位相機。專案名稱暫時保留 Tiger Camera，但 V1 不再製作老虎造型外殼。
 
@@ -6,8 +6,8 @@
 
 只有相機需要連上預先設定的熱點；領取者不必加入該熱點，只要用自己的行動網路或一般 Wi-Fi 開啟網站即可。
 
-> 目前狀態：正式 Web 程式已包含 R2／Neon、Device、Claim、Admin、Cleanup 與 Frontend 串接；真實 Neon migration、R2、Vercel、DNS、雲端 E2E 與硬體仍未完成。
-> 規格基準日：2026-08-15。
+> 目前狀態：正式 Web 程式已包含 R2／Neon、Device、Claim、Admin、Cleanup 與 Frontend 串接；Gate H1 相機＋ST7735＋GPIO1＋PSRAM 已通過 10 次冷開機與 30 次連拍。下一步是 Gate L0 Wi-Fi station 與裝置私人草稿上傳；Vercel Production、DNS 與雲端 E2E 仍待完成。
+> 規格基準日：2026-08-16。
 
 ## V1 範圍
 

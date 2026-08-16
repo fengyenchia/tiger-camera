@@ -30,7 +30,15 @@
   8,384,788 bytes。
 - Camera 與 ST7735 範例已分別跑通；ESP32 已能連接測試用 2.4 GHz
   手機熱點／Wi-Fi。
-- Camera＋ST7735＋GPIO1 快門＋PSRAM 的合併穩定性仍待 Gate H1 實測。
+- 合併韌體 Serial 已確認 OV2640 PID `0x26`、sensor tuning applied、GPIO1
+  idle HIGH 與 press latched；單次成功拍得 20,174-byte JPEG，當時剩餘
+  PSRAM 為 8,242,243 bytes。
+- ST7735 使用 `INITR_BLACKTAB` 時，原生紅綠藍白色條實際顯示為藍綠紅白，
+  證明該面板需要 BGR 色序；韌體已改用同尺寸／offset 的 `INITR_REDTAB`，
+  並關閉會造成負片效果的 inversion。實機已確認最終方向正確，VGA 預覽
+  與拍照回看顏色一致。
+- Camera＋ST7735＋GPIO1 快門＋PSRAM 已完成 10 次冷開機與 30 次連拍，
+  全部成功；Gate H1 通過，GPIO1 可鎖定為原型快門腳位。
 
 賣家資料仍未顯示 LiPo 充電電路，因此雙 USB-C 只能先視為通訊、燒錄與 USB 供電，不能視為電池充電接口。
 
@@ -62,7 +70,7 @@
 
 ## 4. GPIO 分區與暫定接法
 
-依賣家 pinout，第一版避開相機 GPIO4～13、15～18、PSRAM GPIO35～37、SD GPIO38～40、USB GPIO19／20、BOOT GPIO0、UART0 GPIO43／44、WS2812 GPIO48，以及需額外確認的 GPIO3／45／46。下表仍只是 Gate H1 候選，不能在實測前鎖進 PCB。
+依賣家 pinout，第一版避開相機 GPIO4～13、15～18、PSRAM GPIO35～37、SD GPIO38～40、USB GPIO19／20、BOOT GPIO0、UART0 GPIO43／44、WS2812 GPIO48，以及需額外確認的 GPIO3／45／46。下表接法已通過 Gate H1 原型實測；進入正式 PCB 前仍需保留 USB、boot 與維修空間。
 
 | 功能 | 候選 GPIO | 備註 |
 |---|---:|---|
@@ -72,7 +80,7 @@
 | TFT CS | 接 GND | V1 只有一個 SPI 裝置，可固定選取以省一腳 |
 | TFT RST | 接主板 RST | 先確認螢幕允許共用 reset |
 | TFT BLK | 3.3 V 或經電阻 | 先不做 PWM 調光以省 GPIO |
-| 快門 | 1 | pinout 僅標示 ADC1_CH0；仍需檢查開機與漏電 |
+| 快門 | 1 | 10 次冷開機與 30 次連拍成功；鎖定為原型快門腳位 |
 
 若候選腳位實測不穩，優先改用 GPIO2、41 或 42，但需先停用對應板載 LED／JTAG 功能並重新跑冷開機測試。GPIO45 雖在圖上標示 VSPI，仍屬 strapping 相關腳位，第一版不使用。
 

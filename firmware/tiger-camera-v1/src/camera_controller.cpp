@@ -27,7 +27,11 @@ bool CameraController::begin() {
   config.pin_reset = BoardPins::cameraReset;
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  config.frame_size = AppConfig::previewFrameSize;
+  // Framebuffer allocation happens during esp_camera_init(). Allocate for the
+  // largest V1 capture size, then lower only the sensor output for live view.
+  // Initializing at preview size can leave buffers too small for a later XGA
+  // frame and causes esp_camera_fb_get() to return null.
+  config.frame_size = AppConfig::captureFrameSize;
   config.jpeg_quality = AppConfig::jpegQuality;
   config.fb_count = 2;
   config.grab_mode = CAMERA_GRAB_LATEST;
@@ -36,6 +40,7 @@ bool CameraController::begin() {
   const esp_err_t result = esp_camera_init(&config);
   if (result != ESP_OK) {
     Serial.printf("[camera] init failed: 0x%x\n", result);
+    Serial0.printf("[camera] init failed: 0x%x\n", result);
     return false;
   }
 
@@ -46,8 +51,33 @@ bool CameraController::begin() {
     return false;
   }
 
-  sensor->set_framesize(sensor, AppConfig::previewFrameSize);
-  Serial.printf("[camera] ready, PID=0x%02x\n", sensor->id.PID);
+  bool tuningApplied = true;
+  tuningApplied &= sensor->set_framesize(sensor, AppConfig::previewFrameSize) == 0;
+  tuningApplied &= sensor->set_whitebal(sensor, 1) == 0;
+  tuningApplied &= sensor->set_awb_gain(sensor, 1) == 0;
+  tuningApplied &= sensor->set_wb_mode(sensor, 0) == 0;
+  tuningApplied &= sensor->set_exposure_ctrl(sensor, 1) == 0;
+  tuningApplied &=
+      sensor->set_aec2(sensor, AppConfig::sensorAdvancedExposure) == 0;
+  tuningApplied &= sensor->set_gain_ctrl(sensor, 1) == 0;
+  tuningApplied &=
+      sensor->set_gainceiling(sensor, AppConfig::sensorGainCeiling) == 0;
+  tuningApplied &=
+      sensor->set_brightness(sensor, AppConfig::sensorBrightness) == 0;
+  tuningApplied &= sensor->set_contrast(sensor, AppConfig::sensorContrast) == 0;
+  tuningApplied &=
+      sensor->set_saturation(sensor, AppConfig::sensorSaturation) == 0;
+  tuningApplied &=
+      sensor->set_ae_level(sensor, AppConfig::sensorAutoExposureLevel) == 0;
+  tuningApplied &= sensor->set_bpc(sensor, 1) == 0;
+  tuningApplied &= sensor->set_wpc(sensor, 1) == 0;
+  tuningApplied &= sensor->set_raw_gma(sensor, 1) == 0;
+  tuningApplied &= sensor->set_lenc(sensor, 1) == 0;
+
+  Serial.printf("[camera] ready, PID=0x%02x, tuning=%s\n", sensor->id.PID,
+                tuningApplied ? "applied" : "partial");
+  Serial0.printf("[camera] ready, PID=0x%02x, tuning=%s\n", sensor->id.PID,
+                 tuningApplied ? "applied" : "partial");
   return true;
 }
 
