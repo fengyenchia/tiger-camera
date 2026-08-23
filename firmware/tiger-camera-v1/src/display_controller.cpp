@@ -62,11 +62,14 @@ bool DisplayController::drawJpeg(const uint8_t* data, size_t length) {
     return false;
   }
 
-  // Keep the JPEG orientation. Decode at a scale that preserves enough height,
-  // then center-crop 4:3 to the display's 4:5 portrait aspect ratio.
+  // Keep the JPEG orientation. Choose the largest decoder scale whose output
+  // is still at least as tall as the panel, then downsample while drawing.
+  // Decoding XGA directly to 128 x 96 and enlarging it to 128 x 160 made the
+  // preview visibly soft; XGA now decodes to 256 x 192 before the final resize.
   uint8_t scale = 1;
   while (scale < 8 &&
-         imageHeight > static_cast<uint16_t>(tft_.height() * scale)) {
+         imageHeight >=
+             static_cast<uint16_t>(tft_.height() * scale * 2)) {
     scale *= 2;
   }
 

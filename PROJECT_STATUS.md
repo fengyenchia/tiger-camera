@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 ## Current state
 
@@ -13,8 +13,35 @@ project now implements camera／display coexistence, shutter debounce, an owned
 latest-JPEG PSRAM buffer and post-capture review. Its PlatformIO production build
 passes. Physical testing now confirms OV2640 PID `0x26`, GPIO1 idle HIGH and
 latched shutter events, successful VGA JPEG capture into owned PSRAM, and a
-3–5-second review. Preview and capture both remain at VGA so their automatic
-white balance and color match. The tested ST7735 is locked to `INITR_REDTAB`
+3–5-second review. The passed Gate H1 baseline used VGA for both preview and
+capture, so their automatic white balance and color matched. The current
+candidate first kept preview at VGA and captured at UXGA 1600 × 1200. Its first
+physical upload produced a valid 123,060-byte JPEG, but inspection of that exact
+private R2 original confirmed severe underexposure. Increasing the discarded
+transition frames from two to six made only a small improvement, so changing
+resolution at shutter time is rejected. The current candidate keeps both preview
+and capture fixed at XGA 1024 × 768, which has 2.56 times the pixels of VGA while
+allowing exposure and white balance to remain settled. This revision still needs
+physical exposure, preview-speed and stability validation. The first fixed-XGA
+test restored a usable image but the hosted original remained dark and the TFT
+preview looked soft and hazy. The current tuning raises auto-exposure compensation
+to +2 while reducing the automatic gain ceiling from 8× to 4×, contrast from +2
+to +1 and saturation from +2 to +1. This favors longer exposure over noisy gain;
+the physical tradeoff is possible motion blur. The TFT path now decodes XGA at
+256 × 192 before reducing it to 128 × 160 instead of enlarging a 128 × 96
+intermediate. Physical retest still found the hosted original dark and both the
+XGA image and TFT preview soft; XGA increased output dimensions but did not yet
+prove additional optical detail. Before changing exposure again, the next test
+must use bright light, a stationary camera and a subject 0.5–1 m away to separate
+fixed-focus/close-distance blur from low-light exposure blur. The lens protective
+film and lens surface must also be checked.
+The browser view of the unfiltered original is confirmed darker, more contrasted
+and more saturated than desired even though the TFT looks preferable. Because
+the TFT backlight and panel rendering are not the output reference, the current
+JPEG candidate raises sensor brightness from 0 to +1 and returns contrast and
+saturation from +1 to neutral; exposure +2 and the 4× gain ceiling remain unchanged
+so this test does not reintroduce the earlier high-gain color noise.
+The tested ST7735 is locked to `INITR_REDTAB`
 ／BGR with inversion off; status text remains upright with a 3 px right／up
 offset, while JPEG output keeps its original orientation, center-crops 160 × 120
 to 96 × 120 and scales to the 128 × 160 display. The user confirmed the final
@@ -29,7 +56,7 @@ snapshot, `device initiate → R2 PUT → complete`, stale-generation suppressio
 claim-code display only after Server completion. Missing network or upload
 failure does not disable local preview, capture or review. The pinned PlatformIO
 production build with the real local device configuration passes at 54,572 bytes
-RAM (16.7%) and 992,525 bytes Flash (15.1%). Gate L0 is not passed yet: the TLS
+RAM (16.7%) and 991,641 bytes Flash (15.1%). Gate L0 is not passed yet: the TLS
 correction must be reflashed, then hotspot interruption recovery, device
 revocation and 30-upload stress testing remain to be run on the device.
 

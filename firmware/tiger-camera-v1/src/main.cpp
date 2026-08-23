@@ -62,6 +62,7 @@ void printMemoryReport() {
 void showLatestPhoto() {
   if (!latestPhoto.lock(pdMS_TO_TICKS(1000))) {
     display.showStatus("BUFFER BUSY");
+    delay(1000);
     enterState(CameraState::error);
     return;
   }
@@ -71,6 +72,7 @@ void showLatestPhoto() {
   latestPhoto.unlock();
   if (!rendered) {
     display.showStatus("JPEG ERROR");
+    delay(1000);
     enterState(CameraState::error);
     return;
   }
@@ -102,27 +104,35 @@ void showUploadNotice() {
   switch (uploadStatus.phase) {
     case UploadPhase::waitingForWifi:
       display.showStatus("WAITING WIFI", "photo kept");
+      delay(1000);
       break;
     case UploadPhase::waitingForTime:
       display.showStatus("SYNCING TIME", "photo kept");
+      delay(1000);
       break;
     case UploadPhase::configurationError:
       display.showStatus("UPLOAD OFF", "check secrets");
+      delay(1000);
       break;
     case UploadPhase::authenticationError:
       display.showStatus("DEVICE ERROR", "credential");
+      delay(1000);
       break;
     case UploadPhase::serverRejected:
       display.showStatus("UPLOAD ERROR", "check serial");
+      delay(1000);
       break;
     case UploadPhase::memoryError:
       display.showStatus("UPLOAD ERROR", "photo kept");
+      delay(1000);
       break;
     case UploadPhase::retrying:
       display.showStatus("UPLOAD RETRY", "photo kept");
+      delay(1000);
       break;
     default:
       display.showStatus("UPLOADING", "private draft");
+      delay(1000);
       break;
   }
   enterState(CameraState::uploadNotice);
@@ -141,17 +151,19 @@ void capturePhoto() {
   latestClaimAvailable = false;
   enterState(CameraState::capturing);
   display.showStatus("CAPTURING");
+  delay(1000);
 
-  if (AppConfig::captureFrameSize != AppConfig::previewFrameSize &&
-      !camera.setFrameSize(AppConfig::captureFrameSize)) {
-    display.showStatus("CAMERA ERROR", "resolution");
-    enterState(CameraState::error);
-    return;
+  if (AppConfig::captureFrameSize != AppConfig::previewFrameSize) {
+    if (!camera.setFrameSize(AppConfig::captureFrameSize)) {
+      display.showStatus("CAMERA ERROR", "resolution");
+      delay(1000);
+      enterState(CameraState::error);
+      return;
+    }
+
+    // Only discard transition frames when the sensor mode actually changes.
+    camera.flushFrames(AppConfig::captureSettleFrames);
   }
-
-  // Preview already runs at VGA, so white balance remains settled. Discard one
-  // queued frame to capture a frame produced after the shutter press.
-  camera.flushFrames(1);
   camera_fb_t* frame = camera.acquireFrame();
   if (frame == nullptr || frame->format != PIXFORMAT_JPEG || frame->len == 0) {
     const char* reason = frame == nullptr
@@ -163,8 +175,10 @@ void capturePhoto() {
     camera.releaseFrame(frame);
     if (AppConfig::captureFrameSize != AppConfig::previewFrameSize) {
       camera.setFrameSize(AppConfig::previewFrameSize);
+      camera.flushFrames(AppConfig::previewSettleFrames);
     }
     display.showStatus("CAPTURE ERROR", reason);
+    delay(1000);
     enterState(CameraState::error);
     return;
   }
@@ -180,20 +194,25 @@ void capturePhoto() {
   camera.releaseFrame(frame);
   if (AppConfig::captureFrameSize != AppConfig::previewFrameSize) {
     camera.setFrameSize(AppConfig::previewFrameSize);
-    camera.flushFrames(2);
+    camera.flushFrames(AppConfig::previewSettleFrames);
   }
 
   if (!copied) {
     display.showStatus("PSRAM ERROR", "old photo kept");
+    delay(1000);
     enterState(CameraState::error);
     return;
   }
 
-  Serial.printf("[photo] captured %u bytes; free PSRAM %u bytes\n",
+  Serial.printf("[photo] captured %ux%u %u bytes; free PSRAM %u bytes\n",
+                static_cast<unsigned>(capturedWidth),
+                static_cast<unsigned>(capturedHeight),
                 static_cast<unsigned>(capturedSize),
                 static_cast<unsigned>(
                     heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
-  Serial0.printf("[photo] captured %u bytes; free PSRAM %u bytes\n",
+  Serial0.printf("[photo] captured %ux%u %u bytes; free PSRAM %u bytes\n",
+                 static_cast<unsigned>(capturedWidth),
+                 static_cast<unsigned>(capturedHeight),
                  static_cast<unsigned>(capturedSize),
                  static_cast<unsigned>(
                      heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
@@ -248,14 +267,17 @@ void setup() {
   delay(1000);
   display.showStatus("TIGER CAMERA", "Gate H1");
   printMemoryReport();
+  delay(1000);
 
   if (!psramFound() || ESP.getPsramSize() == 0) {
     display.showStatus("PSRAM ERROR", "not detected");
+    delay(1000);
     enterState(CameraState::error);
     return;
   }
   if (!latestPhoto.begin()) {
     display.showStatus("MUTEX ERROR");
+    delay(1000);
     enterState(CameraState::error);
     return;
   }
@@ -266,13 +288,14 @@ void setup() {
   }
   if (!camera.begin()) {
     display.showStatus("CAMERA ERROR", "init failed");
+    delay(1000);
     enterState(CameraState::error);
     return;
   }
 
   shutter.begin();
   display.showStatus("READY", "press shutter");
-  delay(500);
+  delay(1500);
   shutter.discardPending();
   enterState(CameraState::liveView);
 }
@@ -336,7 +359,7 @@ void loop() {
       now - stateStartedMs >= AppConfig::errorDurationMs) {
     if (esp_camera_sensor_get() != nullptr) {
       camera.setFrameSize(AppConfig::previewFrameSize);
-      camera.flushFrames(2);
+      camera.flushFrames(AppConfig::previewSettleFrames);
       shutter.discardPending();
       enterState(CameraState::liveView);
     }
