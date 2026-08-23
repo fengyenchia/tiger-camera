@@ -14,6 +14,20 @@ constexpr unsigned long reviewDurationMs = 3500;
 constexpr unsigned long errorDurationMs = 1500;
 constexpr unsigned long shutterDebounceMs = 35;
 
+// Gate L0 networking stays independent from the camera state machine. A
+// failed hotspot or upload must never reboot or disable local capture.
+constexpr unsigned long wifiConnectTimeoutMs = 12000;
+constexpr unsigned long wifiRetryInitialMs = 2000;
+constexpr unsigned long wifiRetryMaximumMs = 60000;
+constexpr unsigned long uploadRetryInitialMs = 2000;
+constexpr unsigned long uploadRetryMaximumMs = 60000;
+constexpr unsigned long uploadNoticeDurationMs = 1200;
+constexpr unsigned long httpConnectTimeoutMs = 10000;
+constexpr unsigned long httpRequestTimeoutMs = 20000;
+constexpr unsigned long validUnixTime = 1704067200UL;  // 2024-01-01 UTC
+constexpr char ntpServerPrimary[] = "pool.ntp.org";
+constexpr char ntpServerSecondary[] = "time.google.com";
+
 // Conservative OV2640 indoor defaults. Each value remains within the sensor
 // driver's documented range and can be tuned after comparing the original JPEG
 // (not only the TFT preview) under the intended lighting.

@@ -6,13 +6,17 @@
 
 只有相機需要連上預先設定的熱點；領取者不必加入該熱點，只要用自己的行動網路或一般 Wi-Fi 開啟網站即可。
 
-> 目前狀態：正式 Web 程式已包含 R2／Neon、Device、Claim、Admin、Cleanup 與 Frontend 串接；Gate H1 相機＋ST7735＋GPIO1＋PSRAM 已通過 10 次冷開機與 30 次連拍。下一步是 Gate L0 Wi-Fi station 與裝置私人草稿上傳；Vercel Production、DNS 與雲端 E2E 仍待完成。
-> 規格基準日：2026-08-16。
+> 目前狀態：Gate H1 已通過；Gate L0 Wi-Fi station、NTP、背景
+> `initiate → R2 PUT → complete`、重試與領取碼顯示已完成 production build，
+> 實機已確認 Wi-Fi、NTP 與 production Device initiate；R2 首測因誤用
+> Cloudflare leaf certificate 而失敗，現已改用獨立 GTS Root R4，下一步是
+> 重刷後驗證 R2 PUT、complete、領取碼與斷線恢復。完整雲端 E2E 仍待完成。
+> 規格基準日：2026-08-23。
 
 ## V1 範圍
 
 - AroundTW／GOOUUU ESP32-S3-CAM、ESP32-S3-WROOM-1-N16R8 與 OV2640
-- 1.44 吋 128 × 128 ST7735 SPI 螢幕
+- 已通過 Gate H1 的 128 × 160 ST7735 SPI 螢幕（實物對角尺寸與 PCB 尺寸需在外殼 Gate 前補記）
 - 實體快門，短按拍照
 - 拍後直接回看剛拍的照片，不顯示隨機文字
 - 最新 JPEG 暫存在 PSRAM；關機後消失

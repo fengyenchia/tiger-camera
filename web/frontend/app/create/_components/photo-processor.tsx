@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useId, useState } from "react";
 import Link from "next/link";
+import { isAxiosError } from "axios";
 import {
   IconArrowRight,
   IconCloudUpload,
@@ -116,6 +117,7 @@ export function PhotoProcessor() {
   const [title, setTitle] = useState("今天的照片");
   const [publishPublicly, setPublishPublicly] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
+  const [isLoadingOriginal, setIsLoadingOriginal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [message, setMessage] = useState("掃描機身 NFC 後，輸入相機螢幕上的領取碼");
@@ -169,6 +171,31 @@ export function PhotoProcessor() {
     setOptions((current) => ({ ...current, ...patch }));
   }
 
+  async function loadClaimedPhoto(claimed: ClaimedDraft, code: string) {
+    setIsLoadingOriginal(true);
+    setMessage("領取成功，正在下載私人原圖…");
+    try {
+      const response = await fetch(claimed.originalUrl, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${claimed.claimToken}` },
+      });
+      if (!response.ok) throw new Error(`ORIGINAL_HTTP_${response.status}`);
+      const blob = await response.blob();
+      if (!blob.size) throw new Error("ORIGINAL_EMPTY");
+
+      setOriginalBlob(blob);
+      setTitle(`Tiger Camera ${code}`);
+      setOptions((current) => ({
+        ...current,
+        capturedAt: toLocalDateTime(claimed.capturedAt),
+      }));
+    } catch {
+      setMessage("照片已領取，但原圖下載失敗；請檢查 R2 CORS 後按「重新載入原圖」");
+    } finally {
+      setIsLoadingOriginal(false);
+    }
+  }
+
   async function handleClaim(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedCode = claimCode.replace(/[^a-z0-9]/gi, "").toUpperCase();
@@ -181,28 +208,22 @@ export function PhotoProcessor() {
     setMessage("正在領取私人照片…");
     try {
       const claimed = await claimDraft(normalizedCode);
-      const response = await fetch(claimed.originalUrl, {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${claimed.claimToken}` },
-      });
-      if (!response.ok) throw new Error("無法讀取私人原圖");
-      const blob = await response.blob();
-      if (!blob.size) throw new Error("私人原圖內容為空");
-
       setDraft(claimed);
-      setOriginalBlob(blob);
-      setTitle(`Tiger Camera ${normalizedCode}`);
-      setOptions((current) => ({
-        ...current,
-        capturedAt: toLocalDateTime(claimed.capturedAt),
-      }));
       window.sessionStorage.setItem(
         `tiger_camera_claim_${claimed.id}`,
         claimed.claimToken,
       );
-      setMessage("照片已領取，只會在你選擇公開後出現在相簿");
-    } catch {
-      setMessage("領取碼錯誤、已使用或已過期，請確認相機螢幕");
+      await loadClaimedPhoto(claimed, normalizedCode);
+    } catch (error) {
+      if (isAxiosError(error) && !error.response) {
+        setMessage("無法連線到 Backend API，請檢查 API 網址或是否已啟動後端");
+      } else if (isAxiosError(error) && error.response?.status === 404) {
+        setMessage("領取碼不存在、已使用或已過期，請確認相機螢幕");
+      } else if (isAxiosError(error) && error.response?.status === 400) {
+        setMessage("領取碼格式錯誤，請輸入 6 位英數字元");
+      } else {
+        setMessage("領取失敗，請稍後再試");
+      }
     } finally {
       setIsClaiming(false);
     }
@@ -324,8 +345,24 @@ export function PhotoProcessor() {
                   <img src={previewUrl} alt="後製照片預覽" className="mx-auto max-h-[68svh] w-full object-contain" />
                 </div>
               ) : (
-                <div className="grid min-h-80 place-items-center rounded-primary bg-foreground/5">
-                  <IconRefresh className="animate-spin text-primary motion-reduce:animate-none" aria-label="正在產生預覽" />
+                <div className="grid min-h-80 place-items-center gap-4 rounded-primary bg-foreground/5 p-6 text-center">
+                  {isLoadingOriginal || originalBlob ? (
+                    <IconRefresh
+                      className="animate-spin text-primary motion-reduce:animate-none"
+                      aria-label={isLoadingOriginal ? "正在下載原圖" : "正在產生預覽"}
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="font-bold text-foreground/65">{message}</p>
+                      <Button
+                        variant="secondary"
+                        onClick={() => void loadClaimedPhoto(draft, claimCode.replace(/[^a-z0-9]/gi, "").toUpperCase())}
+                      >
+                        <IconRefresh />
+                        重新載入原圖
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -43,42 +43,26 @@ flowchart LR
 
 ## 現在從哪裡開始
 
-### Gate C0：先用測試 JPEG 完成雲端閉環
+### 已完成：Gate C0 測試流程與 Gate H1 硬體核心
 
-這是目前第一個 Gate，先不要等待硬體。Frontend／Backend 程式已完成；現在要完成外部服務設定與真實 E2E：
+Frontend／Backend API 已由使用者完成開發測試；Gate H1 已通過 10 次冷開機
+與 30 次連拍。ESP32 已實際連上 production Backend 並完成 Device initiate；
+R2 TLS 修正、complete 與完整雲端 E2E 仍需補驗，不能因此把 Gate L0 實機
+結果預先標為通過。
 
-1. 已在 `web/frontend/` 與 `web/backend/` 建立可獨立部署的 Next.js 專案與正式 Route Handlers。
-2. 分別部署 Frontend／Backend；Frontend 連接 `tiger-camera.fengyenchia.com`，Backend 連接 `api.tiger-camera.fengyenchia.com`，再設定 API URL 與 CORS 白名單。
-3. 建立 Cloudflare R2 私人 bucket、CORS 與 Neon `devices`／`photos` 資料表。
-4. 從 `/admin` 建立測試 device credential，模擬裝置上傳原圖並完成 `uploading → ready`。
-5. 驗證已實作的 UNIQUE 6 位明碼、24 小時期限、原子單次領取與 draft-scoped UUID Bearer token。
-6. 在 `/create` 以真實雲端草稿領取測試 JPEG、後製、下載完成圖並選擇公開。
-7. 驗證公開相簿、單一管理員 JWT 與一次永久刪除。
-8. 驗證 device、claim holder、公開訪客與管理員四種權限不能互相越權。
+### 現在進行：Gate L0 裝置連網與私人草稿
 
-通過條件：一張測試 JPEG 能完成「裝置私人上傳→領取碼→手機後製→可選公開→單次永久刪除」，且沒有越權或孤兒資料。
+1. 複製 `firmware/tiger-camera-v1/include/secrets.example.h` 為不進 Git 的
+   `secrets.h`，填入 2.4 GHz Wi-Fi、device credential 與 HTTPS root CA。
+2. 燒錄已實作的 Wi-Fi station、NTP、背景上傳與領取碼版本。
+3. 驗證離線仍可拍照、回看與取代最新 JPEG。
+4. 驗證熱點恢復後同一 `clientRequestId` 自動完成
+   `initiate → presigned PUT → complete`，且不重複建立草稿。
+5. 驗證只有 complete 成功才顯示 6 位碼；被撤銷 credential 顯示明確錯誤。
+6. 依 [`test-plan.md`](test-plan.md) N-01～N-09 完成 30 次上傳與 5 次斷線恢復。
 
-### Gate H0/H1：再驗證硬體核心
-
-第一批只買 ESP32-S3-CAM＋OV2640、ST7735、快門與必要線材：
-
-1. 記錄實際 PCB、N16R8、OV2640 與螢幕標示。
-2. 驗證 TTL／OTG USB-C 的燒錄與序列埠行為。
-3. 單獨跑相機範例。
-4. 單獨點亮 ST7735。
-5. 驗證候選 GPIO 與冷開機。
-6. 將最新 JPEG 複製到程式持有的 PSRAM buffer。
-7. 驗證相機＋ST7735＋快門＋PSRAM 共存，連續拍攝 30 次。
-
-通過條件：冷開機 10 次、拍攝 30 次，皆無花屏、壞圖、boot failure 或重啟。
-
-### Gate L0：完成裝置連網與私人草稿
-
-1. 以忽略版本控制的設定提供 2.4 GHz SSID、密碼與 device credential。
-2. 實作 Wi-Fi station 自動重連、上傳 timeout 與指數退避重試。
-3. 實作 `device initiate → presigned PUT original → device complete`。
-4. Server 確認原圖後建立短效領取碼，ESP32 螢幕顯示「已上傳」與領取碼。
-5. 離線或上傳失敗時保留最新 JPEG 並顯示「等待網路」，不得假裝已有領取碼。
+通過條件：熱點中斷與恢復後能上傳同一張最新照片且不重複，拍照核心不中斷，
+只有 Server 確認成功才顯示可用領取碼。
 
 ### Gate I0：整合瀏覽器後製與雲端
 

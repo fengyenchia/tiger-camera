@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-16
+Last updated: 2026-08-23
 
 ## Current state
 
@@ -22,18 +22,39 @@ direction and preview／capture colors are correct. The user then completed 10
 cold boots and 30 repeated captures without reporting boot failure, corrupted
 JPEG, display artifacts, PSRAM decline or reset. Gate H1 is passed.
 
+Gate L0 firmware implementation is now present. It adds manual Wi-Fi station
+reconnect with bounded exponential backoff, UTC NTP synchronization, CA-verified
+HTTPS, a Core 0 upload task, per-capture UUID idempotency, an owned PSRAM upload
+snapshot, `device initiate → R2 PUT → complete`, stale-generation suppression and
+claim-code display only after Server completion. Missing network or upload
+failure does not disable local preview, capture or review. The pinned PlatformIO
+production build with the real local device configuration passes at 54,572 bytes
+RAM (16.7%) and 992,525 bytes Flash (15.1%). Gate L0 is not passed yet: the TLS
+correction must be reflashed, then hotspot interruption recovery, device
+revocation and 30-upload stress testing remain to be run on the device.
+
+The first Gate L0 hardware run connected to Wi-Fi, started NTP, captured and
+queued the JPEG, and successfully reached Device initiate. R2 PUT then failed
+with mbedTLS `-9984 X509`. Inspection found `secrets.h` contained the valid API
+root `ISRG Root X1` plus a `dash.cloudflare.com` leaf certificate, while the
+actual R2 hostname chained through `WE1 → GTS Root R4`. Firmware now separates
+the API CA from a public, fingerprinted GTS Root R4 trust anchor in
+`r2_root_ca.h`; this correction builds successfully but still requires a new
+physical upload test.
+
 The Web code implements the
 Gate C0 lifecycle: Device initiate／complete, private R2 objects, Neon metadata,
 six-character claims, opaque UUID claim tokens, Canvas finished-image upload,
 optional publication, public reading, Admin JWT, device revocation, one-click
 permanent deletion and cleanup. `/admin` provides the administrator UI. Neon and
 R2 have been configured sufficiently for the user to report that all implemented
-API endpoints passed the development test flow. Production deployment／DNS and direct
-recording of every cleanup object-state assertion remain pending. IndexedDB retry
-remains pending.
+API endpoints passed the development test flow. The first device Gate L0 run also
+proved that the production API DNS／HTTPS origin is reachable, accepts the device
+credential and returns an R2 presigned URL. Direct recording of every cleanup
+object-state assertion and full cloud E2E remain pending. IndexedDB retry remains
+pending.
 The Web code is now a pnpm workspace with independently deployable
-`web/frontend/` and `web/backend/` Next.js projects; the existing Vercel project
-still needs its Root Directory changed, and the Backend Vercel project is not yet created.
+`web/frontend/` and `web/backend/` Next.js projects.
 
 The Frontend now uses route-local `app/<route>/_components/` folders, shared
 shadcn-style primitives under `components/ui/`, five base color tokens, two
@@ -49,14 +70,15 @@ test script exists yet.
 The Backend generates OpenAPI 3.0.3 from Route Handler JSDoc with
 `next-swagger-doc`, serves Swagger UI through `swagger-ui-dist` at `/api/docs`
 and exposes `/api/openapi`. Server modules for Neon, R2, device／claim／admin auth,
-drafts, photos and validation are implemented. The intended production Backend
-origin is `https://api.tiger-camera.fengyenchia.com`; DNS, migration, credentials,
-production deployment and DNS verification are still pending.
+drafts, photos and validation are implemented. The production Backend origin
+`https://api.tiger-camera.fengyenchia.com` is reachable from the ESP32 and Device
+initiate succeeds; R2 PUT and the remainder of the cloud flow still need the
+corrected firmware retest.
 
 ## Locked V1 decisions
 
 - Controller: AroundTW／GOOUUU ESP32-S3-CAM with ESP32-S3-WROOM-1-N16R8 and OV2640
-- Display candidate: 1.44-inch 128 × 128 or 1.8-inch 128 × 160 ST7735 SPI
+- Display: physically tested 128 × 160 ST7735 SPI in portrait orientation
 - Enclosure: basic rectangular camera shape; no tiger-head geometry
 - Capture format: original JPEG
 - High-quality retro processing: phone Canvas with independently selectable Polaroid frame, captured-time timestamp, text and retro filter; the time is not manually editable and all effects may be disabled
@@ -97,6 +119,8 @@ production deployment and DNS verification are still pending.
 - A physical capture reaches the timed review state without a reported reset
 - 2026-08-16 combined-firmware Serial: OV2640 PID `0x26`, tuning applied,
   GPIO1 idle HIGH, press latched, JPEG 20,174 bytes, free PSRAM 8,242,243 bytes
+- 2026-08-23 Gate L0 build with real local device configuration: Wi-Fi／HTTP／TLS
+  libraries linked; RAM 54,572／327,680 bytes and Flash 992,525／6,553,600 bytes
 
 ## Unverified assumptions
 
@@ -107,9 +131,11 @@ production deployment and DNS verification are still pending.
   not sufficient evidence that the stored JPEG itself is out of focus
 - Real current draw and runtime with an 800 mAh LiPo
 - Stability of the selected phone hotspot, its 2.4 GHz compatibility and background timeout behavior
+- Whether the production API and R2 presigned URL certificate chains are both
+  covered by the CA blocks configured in device `secrets.h`
 - Real mobile experience of the locked 6-character／24-hour pairing code and daily Hobby cleanup interval
-- DNS, Vercel hosting, Cloudflare R2, Neon PostgreSQL and authentication setup for
-  `tiger-camera.fengyenchia.com`
+- Frontend custom-domain behavior and the full R2／Neon claim／publish flow from
+  physical ESP32 upload through the public site; Backend DNS／initiate are confirmed
 - Final module and simple enclosure dimensions
 
 ## Gate C0 cloud photo lifecycle
@@ -160,6 +186,26 @@ the owned latest-JPEG PSRAM buffer coexisted for 10 cold boots and 30 repeated
 captures without a reported failure. The next milestone is Gate L0: Wi-Fi
 station reconnect plus `device initiate → PUT original → complete` and claim-code
 display, while keeping offline camera capture non-fatal.
+
+## Gate L0 implementation and next validation
+
+- [x] Add ignored `secrets.h` template fields for Wi-Fi, API, device credential
+      and PEM root CAs
+- [x] Separate the API root CA from the current R2 GTS Root R4 trust anchor;
+      never use a Cloudflare Dashboard leaf certificate
+- [x] Add station reconnect timeout and 2～60 second exponential backoff
+- [x] Add NTP gating and captured-time reconstruction from capture uptime
+- [x] Add Core 0 background upload with owned PSRAM snapshot
+- [x] Add idempotent UUID `clientRequestId`, initiate, R2 PUT and complete
+- [x] Ignore an old upload result after a newer successful capture
+- [x] Show wait／retry／credential states and show a code only after complete
+- [x] Pass the pinned PlatformIO production build
+- [ ] Fill real `secrets.h`, flash the board and verify CA coverage
+- [ ] Verify offline capture plus hotspot disconnect／reconnect on hardware
+- [ ] Verify the TFT code claims the matching original photo from `/create`
+- [ ] Verify revoked device behavior and 30 uploads with 5 forced disconnects
+
+Gate L0 remains in progress until every unchecked physical item passes.
 
 ## Budget
 

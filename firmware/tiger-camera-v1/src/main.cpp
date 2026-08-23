@@ -6,7 +6,9 @@
 #include "camera_controller.h"
 #include "display_controller.h"
 #include "latest_photo_buffer.h"
+#include "network_manager.h"
 #include "shutter_button.h"
+#include "upload_manager.h"
 
 enum class CameraState {
   booting,
@@ -14,17 +16,25 @@ enum class CameraState {
   capturing,
   copying,
   review,
+  uploadNotice,
+  claimReady,
   error,
 };
 
 CameraController camera;
 DisplayController display;
 LatestPhotoBuffer latestPhoto;
+NetworkManager network;
+UploadManager uploader;
 ShutterButton shutter(BoardPins::shutter, AppConfig::shutterDebounceMs);
 
 CameraState state = CameraState::booting;
 unsigned long stateStartedMs = 0;
 unsigned long lastPreviewMs = 0;
+uint32_t latestUploadGeneration = 0;
+bool latestClaimAvailable = false;
+char latestClaimCode[7] = {};
+char latestClaimExpiresAt[25] = {};
 
 void enterState(CameraState next) {
   state = next;
@@ -67,7 +77,68 @@ void showLatestPhoto() {
   enterState(CameraState::review);
 }
 
+void pollUploadResult() {
+  uint32_t generation = 0;
+  char claimCode[7] = {};
+  char expiresAt[25] = {};
+  if (!uploader.takeClaimCode(&generation, claimCode, sizeof(claimCode),
+                              expiresAt, sizeof(expiresAt))) {
+    return;
+  }
+  if (generation != latestUploadGeneration) {
+    Serial.printf("[upload] ignored stale claim generation=%lu latest=%lu\n",
+                  generation, latestUploadGeneration);
+    Serial0.printf("[upload] ignored stale claim generation=%lu latest=%lu\n",
+                   generation, latestUploadGeneration);
+    return;
+  }
+  strlcpy(latestClaimCode, claimCode, sizeof(latestClaimCode));
+  strlcpy(latestClaimExpiresAt, expiresAt, sizeof(latestClaimExpiresAt));
+  latestClaimAvailable = true;
+}
+
+void showUploadNotice() {
+  const UploadStatus uploadStatus = uploader.status();
+  switch (uploadStatus.phase) {
+    case UploadPhase::waitingForWifi:
+      display.showStatus("WAITING WIFI", "photo kept");
+      break;
+    case UploadPhase::waitingForTime:
+      display.showStatus("SYNCING TIME", "photo kept");
+      break;
+    case UploadPhase::configurationError:
+      display.showStatus("UPLOAD OFF", "check secrets");
+      break;
+    case UploadPhase::authenticationError:
+      display.showStatus("DEVICE ERROR", "credential");
+      break;
+    case UploadPhase::serverRejected:
+      display.showStatus("UPLOAD ERROR", "check serial");
+      break;
+    case UploadPhase::memoryError:
+      display.showStatus("UPLOAD ERROR", "photo kept");
+      break;
+    case UploadPhase::retrying:
+      display.showStatus("UPLOAD RETRY", "photo kept");
+      break;
+    default:
+      display.showStatus("UPLOADING", "private draft");
+      break;
+  }
+  enterState(CameraState::uploadNotice);
+}
+
+void showLatestClaim() {
+  display.showClaimCode(latestClaimCode);
+  Serial.printf("[claim] code=%s expires=%s\n", latestClaimCode,
+                latestClaimExpiresAt);
+  Serial0.printf("[claim] code=%s expires=%s\n", latestClaimCode,
+                 latestClaimExpiresAt);
+  enterState(CameraState::claimReady);
+}
+
 void capturePhoto() {
+  latestClaimAvailable = false;
   enterState(CameraState::capturing);
   display.showStatus("CAPTURING");
 
@@ -100,6 +171,9 @@ void capturePhoto() {
 
   enterState(CameraState::copying);
   const size_t capturedSize = frame->len;
+  const uint16_t capturedWidth = frame->width;
+  const uint16_t capturedHeight = frame->height;
+  const uint32_t capturedMillis = millis();
   const bool copied = latestPhoto.replace(frame->buf, frame->len);
 
   // The camera framebuffer is returned only after the JPEG is fully copied.
@@ -123,6 +197,21 @@ void capturePhoto() {
                  static_cast<unsigned>(capturedSize),
                  static_cast<unsigned>(
                      heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
+
+  // A successful local capture invalidates every older claim immediately,
+  // even if allocating the new upload snapshot fails.
+  latestUploadGeneration = UINT32_MAX;
+  bool queued = false;
+  if (latestPhoto.lock(pdMS_TO_TICKS(1000))) {
+    queued = uploader.queuePhoto(
+        latestPhoto.dataUnsafe(), latestPhoto.sizeUnsafe(), capturedWidth,
+        capturedHeight, capturedMillis, &latestUploadGeneration);
+    latestPhoto.unlock();
+  }
+  if (!queued) {
+    Serial.println("[upload] could not queue photo; local JPEG remains available");
+    Serial0.println("[upload] could not queue photo; local JPEG remains available");
+  }
   showLatestPhoto();
 }
 
@@ -170,6 +259,11 @@ void setup() {
     enterState(CameraState::error);
     return;
   }
+  network.begin();
+  if (!uploader.begin(&network)) {
+    Serial.println("[upload] background task unavailable; camera remains local-only");
+    Serial0.println("[upload] background task unavailable; camera remains local-only");
+  }
   if (!camera.begin()) {
     display.showStatus("CAMERA ERROR", "init failed");
     enterState(CameraState::error);
@@ -185,8 +279,14 @@ void setup() {
 
 void loop() {
   const unsigned long now = millis();
+  network.loop();
+  pollUploadResult();
 
   if (state == CameraState::liveView) {
+    if (latestClaimAvailable) {
+      showLatestClaim();
+      return;
+    }
     if (shutter.pressed()) {
       capturePhoto();
       return;
@@ -202,7 +302,31 @@ void loop() {
       now - stateStartedMs >= AppConfig::reviewDurationMs) {
     // Capturing and review intentionally ignore presses and switch bounce.
     shutter.discardPending();
-    enterState(CameraState::liveView);
+    if (latestClaimAvailable) {
+      showLatestClaim();
+    } else {
+      showUploadNotice();
+    }
+    return;
+  }
+
+  if (state == CameraState::uploadNotice &&
+      now - stateStartedMs >= AppConfig::uploadNoticeDurationMs) {
+    shutter.discardPending();
+    if (latestClaimAvailable) {
+      showLatestClaim();
+    } else {
+      enterState(CameraState::liveView);
+    }
+    return;
+  }
+
+  if (state == CameraState::claimReady) {
+    // Keep the usable code visible until the owner deliberately takes the next
+    // photo. The new successful capture replaces both the local JPEG and code.
+    if (shutter.pressed()) {
+      capturePhoto();
+    }
     return;
   }
 

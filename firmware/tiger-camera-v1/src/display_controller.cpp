@@ -104,6 +104,13 @@ void DisplayController::showStatus(const char* heading, const char* detail) {
   }
 }
 
+void DisplayController::showClaimCode(const char* code) {
+  tft_.fillScreen(ST77XX_BLACK);
+  drawCenteredText("CLAIM CODE", 1, 45, ST77XX_WHITE);
+  drawCenteredText(code, 3, 78, ST77XX_YELLOW);
+  drawCenteredText("VALID 24H", 1, 112, ST77XX_WHITE);
+}
+
 void DisplayController::drawCenteredText(const char* text, uint8_t size,
                                          int16_t centerY, uint16_t color) {
   int16_t boundsX = 0;

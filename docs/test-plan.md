@@ -1,6 +1,8 @@
 # Tiger Camera V1 測試計畫
 
-狀態（2026-08-16）：使用者回報 Gate C0 所有 API 已完成開發環境測試。硬體已分別跑通 Camera 與 ST7735，並量得 16 MB Flash／8 MB PSRAM。Gate H1 合併韌體 Serial 為 OV2640 PID `0x26`、tuning applied、GPIO1 idle HIGH／press latched，成功保存 20,174-byte JPEG 後剩餘 8,242,243-byte PSRAM。實機確認 REDTAB／BGR、inversion off、文字與照片方向正確，固定 VGA 後預覽與拍照顏色一致。10 次冷開機與 30 次連拍全部成功，Gate H1 通過。
+狀態（2026-08-23）：Gate C0 API 開發測試與 Gate H1 實機驗收已通過。
+Gate L0 韌體已完成 production build，但尚未燒錄與執行 N-01～N-09；下列
+L0 項目目前全部維持未通過，不可以 build 成功代替實機結果。
 
 實機結果要記錄日期、韌體 commit、PCB／sensor／螢幕標示、供電、Wi-Fi／熱點型號、手機／OS／瀏覽器及錯誤 log。未在實體裝置執行的項目不得標示通過。
 
@@ -72,6 +74,23 @@
 | N-07 | 顯示領取碼 | complete 成功前絕不顯示 code；成功後大字清楚、期限正確 |
 | N-08 | Device 撤銷 | Server 撤銷後裝置停止上傳並顯示可辨識錯誤 |
 | N-09 | Secrets | 韌體 binary／serial log／Git 沒有 Admin、R2、Neon secrets |
+
+### Gate L0 執行順序與記錄
+
+1. 建立一個只供本機原型使用的 device credential，填入忽略 Git 的
+   `include/secrets.h`；記錄 device ID，但不要把 credential 貼進測試文件。
+2. 確認 Backend 已是 ESP32 可達的公開 HTTPS URL；不得使用 `localhost` 或
+   `127.0.0.1`。記錄 Backend commit／部署 URL、韌體 commit、熱點手機型號、OS、頻段、
+   供電、API `tlsRootCaPem` 與 R2 `r2_root_ca.h` 的 subject／fingerprint／期限。
+3. 先做正常單張：`queued → initiate → PUT → complete → CLAIM CODE`，再到
+   `/create` 驗證該碼對應同一張圖。
+4. 關閉熱點後拍照，確認 local capture／review 正常且沒有 code；重開熱點，
+   核對相同 `clientRequestId` 在 Neon 只有一筆。
+5. 斷線期間拍兩張，確認 pending snapshot 被新照片取代；若舊 HTTP request
+   已開始，舊 complete 結果不得覆蓋最新照片的螢幕 code。
+6. 撤銷 credential，確認 API 回 401、TFT 顯示 `DEVICE ERROR` 且不建立草稿。
+7. 最後執行 30 次裝置上傳與至少 5 次強制斷線；記錄每次 draft ID、request
+   ID、JPEG bytes、claim code、reset／brownout 與 free PSRAM 趨勢。
 
 ## 5. Gate W0：領取與 Canvas
 

@@ -1,6 +1,6 @@
-# Tiger Camera V1 firmware — Gate H1
+# Tiger Camera V1 firmware — Gate H1＋Gate L0
 
-這是 AroundTW／GOOUUU ESP32-S3-CAM（ESP32-S3-WROOM-1-N16R8＋OV2640）的正式 PlatformIO 韌體。目前只實作 Gate H1，不包含 Wi-Fi 或 API 上傳。
+這是 AroundTW／GOOUUU ESP32-S3-CAM（ESP32-S3-WROOM-1-N16R8＋OV2640）的正式 PlatformIO 韌體。Gate H1 已通過實機驗收；Gate L0 的 Wi-Fi station、NTP、私人草稿背景上傳與領取碼顯示已實作並通過 production build，尚待燒錄後做熱點中斷／恢復實測。
 
 ## 已實作
 
@@ -28,6 +28,20 @@
 - Serial 輸出 Flash、PSRAM、JPEG 大小與剩餘 PSRAM。
 - Gate H1 診斷同時輸出至 OTG 的原生 USB CDC 與 TTL 的 UART0；兩者皆為
   115200 baud。
+- Wi-Fi station 連接 `secrets.h` 中的 2.4 GHz 熱點／可信任 Wi-Fi；12 秒
+  timeout 後以 2～60 秒指數退避重連，不建立 AP。
+- 連網後以 NTP 同步 UTC；Backend 需要合法 `capturedAt`，因此時間完成同步
+  前只等待，不送出錯誤日期。
+- 每次成功拍攝產生穩定 UUID `clientRequestId`，執行
+  `initiate → R2 PUT → complete`；失敗重試同一 UUID，不建立重複草稿。
+- 上傳工作在 Core 0 的 FreeRTOS task 執行，另持有一份 PSRAM JPEG snapshot；
+  HTTPS timeout、R2 PUT 或熱點斷線不會卡住 Core 1 的預覽與快門。
+- 新拍攝會取代尚未開始上傳的舊工作；若舊工作已在 HTTP request 中，允許
+  該 request 結束，但只顯示與目前最新照片 generation 相符的領取碼。
+- `complete` 成功前不顯示領取碼。成功後顯示 6 位大字與 `VALID 24H`，直到
+  使用者按下快門拍攝下一張。
+- API 與 R2 都使用 CA 驗證的 HTTPS；不使用 `setInsecure()`，device
+  credential、R2／Neon／Admin secrets 皆不輸出至 Serial。
 
 ## 已確認硬體容量
 
@@ -61,11 +75,25 @@ GPIO1 已通過 10 次冷開機與 30 次連拍，可鎖定為原型快門腳位
 
 ## 建置
 
+實機上傳前，Backend 必須已部署成 ESP32 可連線的公開 HTTPS origin；
+`localhost`、`127.0.0.1` 與電腦上的 Next.js dev URL 不能直接填給相機。正式
+設定預期為 `https://api.tiger-camera.fengyenchia.com/api`，且該部署必須能
+產生 ESP32 可直接存取的 R2 presigned PUT URL。
+
 1. 安裝 VS Code PlatformIO extension 或 PlatformIO Core。
-2. 以 PlatformIO 開啟此資料夾。
-3. 執行 Build。
-4. 連接已確認可燒錄的 USB-C，執行 Upload。
-5. 以 115200 baud 開啟 Serial Monitor。
+2. 複製 `include/secrets.example.h` 為 `include/secrets.h`。
+3. 填入 2.4 GHz SSID、密碼、Backend API base URL、從 `/admin` 建立且只顯示
+   一次的 device credential，以及 **API 網域**所需的 PEM root CA。不要把
+   `dash.cloudflare.com` 或任何網站 leaf certificate 填進去，也不要關閉 TLS
+   驗證。R2 的 GTS Root R4 公開信任根獨立放在 `include/r2_root_ca.h`。
+4. 以 PlatformIO 開啟此資料夾並執行 Build。
+5. 連接已確認可燒錄的 USB-C，執行 Upload。
+6. 以 115200 baud 開啟 Serial Monitor。
+
+`deviceCredential` 只代表這台相機，可在 `/admin` 撤銷；它不是 ESP32
+credential、Admin JWT、R2 key 或 Neon connection string。`secrets.h` 已由
+repository 根目錄 `.gitignore` 排除，仍要在 commit 前執行
+`git status --ignored` 確認它沒有被加入。
 
 ### 在 VS Code 開啟 Serial Monitor
 
@@ -103,6 +131,31 @@ Repository 已以 PlatformIO Core 6.1.19、Espressif32 platform 7.0.1、Arduino-
 6. 冷開機 10 次，GPIO1 快門不影響啟動。
 7. 模擬一次配置失敗時，上一張有效照片仍可保留。
 
+### Gate L0 實機驗收
+
+1. 先開啟已設定的 2.4 GHz 熱點再開機，Serial 應依序出現
+   `[wifi] connected`、`[time] NTP synchronization started`。
+2. 拍一張照片；回看結束後應短暫顯示 `UPLOADING`，Serial 依序記錄
+   `queued` 與 `complete`，最後螢幕只在 complete 成功後顯示 6 位碼。
+3. 用手機進入 `https://tiger-camera.fengyenchia.com/create`，確認該碼可領取
+   這一張照片，且照片方向與原始 JPEG 正確。
+4. 關閉熱點後拍照：仍須能預覽、拍照、回看並顯示 `WAITING WIFI`，不得
+   reset，也不得顯示新領取碼。
+5. 重新開啟熱點：同一 generation 應自動完成上傳，Neon 只能新增一筆
+   `(device_id, client_request_id)` 草稿。
+6. 在斷網等待時連拍兩張：恢復後只要求最新一張的碼出現在 TFT；任何已經
+   開始的舊 HTTP request 不得讓舊碼覆蓋新碼。
+7. 在 `/admin` 撤銷裝置後再拍照，TFT 應顯示 `DEVICE ERROR / credential`，
+   Server 不得建立草稿；恢復必須建立新 credential、更新 `secrets.h` 並重刷。
+8. 完成 30 次上傳及至少 5 次熱點中斷／恢復，確認沒有重複草稿、截斷 JPEG、
+   PSRAM 持續下降、brownout 或 reset，才能將 Gate L0 標為通過。
+
+若 API initiate 成功，但 Serial 只在 `R2 PUT` 出現 `-9984 X509`，代表 API
+CA 正確、R2 CA 錯誤，不是 JPEG 或 device credential 問題。2026-08-23 實測
+R2 hostname 使用 `WE1 → GTS Root R4`；韌體已分開使用
+`r2_root_ca.h`，並只記錄 hostname、不輸出 presigned query。若未來 chain
+改變，更新該公開 CA 檔並重新 build，不可改用 `setInsecure()`。
+
 ## 本輪重新燒錄後先檢查
 
 1. 115200 baud Serial 開機時應顯示
@@ -135,6 +188,5 @@ Repository 已以 PlatformIO Core 6.1.19、Espressif32 platform 7.0.1、Arduino-
 暫時維持不變。若新版原生色條順序已正確但仍整體偏灰，再單獨測試面板
 反相／gamma，不再同時改相機 sensor 設定。
 
-Gate H1 已通過。下一階段加入 `secrets.h`、Wi-Fi 重連與
-`initiate → R2 PUT → complete`；`secrets.example.h` 只是欄位範本，真實
-`secrets.h` 已被 repository 根目錄 `.gitignore` 排除。
+Gate H1 已通過。Gate L0 程式與 production build 已完成，但上述熱點、真實
+API／R2 與實機壓力測試尚未執行，因此 Gate L0 目前仍是「實作完成、驗收中」。

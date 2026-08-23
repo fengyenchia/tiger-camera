@@ -11,6 +11,7 @@ class DisplayController {
   void showColorTest();
   bool drawJpeg(const uint8_t* data, size_t length);
   void showStatus(const char* heading, const char* detail = nullptr);
+  void showClaimCode(const char* code);
 
  private:
   static bool jpegBlock(int16_t x, int16_t y, uint16_t width,

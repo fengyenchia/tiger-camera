@@ -1,6 +1,9 @@
 # 軟體、NFC、領取碼、後製與雲端相簿規劃
 
-實作狀態（2026-08-15）：Web Gate C0 的 Frontend、Backend Route Handlers、Neon migration 與 R2 存取層已寫入 repository；真實雲端設定、部署、E2E 與 ESP32 實機串接尚未完成。
+實作狀態（2026-08-23）：Web Gate C0 API 已由使用者完成開發測試。Gate L0
+韌體已實作 Wi-Fi station、NTP、CA 驗證 HTTPS、背景私人草稿上傳、重試與
+領取碼顯示並通過 production build；真實裝置燒錄、熱點恢復與雲端 E2E 尚未
+驗收，因此 Gate L0 仍未通過。
 
 ## 1. V1 架構
 
@@ -56,14 +59,20 @@ Device credential 必須可由管理員撤銷。它可以是高熵 opaque token�
 
 | 模組 | 責任 |
 |---|---|
-| `CameraService` | 初始化、預覽幀、拍攝 JPEG |
+| `CameraController` | 初始化、預覽幀、拍攝 JPEG |
 | `LatestPhotoBuffer` | 在 PSRAM 持有最新 JPEG、替換與 mutex 保護 |
-| `DisplayService` | 預覽、拍後回看、上傳與領取碼狀態 |
-| `ButtonService` | debounce 與短按 |
-| `NetworkService` | Wi-Fi station、自動重連、連線狀態 |
-| `DraftUploadService` | device initiate、R2 PUT、complete、重試與 idempotency |
-| `DeviceCredentialStore` | 從 NVS 讀取 device ID／credential，不寫入 log |
-| `AppState` | 狀態機與跨模組事件 |
+| `DisplayController` | 預覽、拍後回看、上傳與領取碼狀態 |
+| `ShutterButton` | GPIO1 中斷鎖存、debounce 與短按 |
+| `NetworkManager` | Wi-Fi station、timeout、指數退避、NTP 與拍攝時間 |
+| `UploadManager` | Core 0 背景 initiate、R2 PUT、complete、重試與 idempotency |
+| `device_config.h` | 讀取忽略 Git 的 `secrets.h` 並拒絕 placeholder／缺少 CA 的設定 |
+| `main.cpp` | 相機狀態、上傳提示、generation 與領取碼整合 |
+
+目前 credential 由不進 Git 的 `include/secrets.h` 編譯進單台原型；NVS
+provisioning 尚未實作。韌體只保存 device credential，不保存 Admin、R2 或
+Neon secrets。API 使用 `secrets.h` 的 `tlsRootCaPem`，R2 使用版本控制中的
+公開 `r2_root_ca.h`；兩者都驗證 CA，禁止使用 `setInsecure()`。不要把
+Cloudflare Dashboard 或 R2 hostname 的 leaf certificate 當成 root CA。
 
 ## 4. 裝置狀態機
 
@@ -77,7 +86,7 @@ Device credential 必須可由管理員撤銷。它可以是高熵 opaque token�
 | `REVIEW` | 剛拍照片，不疊加隨機文字 | 等待上傳 |
 | `UPLOAD_PENDING` | 等待網路／可重試 | 新拍攝成功時直接取代最新照片 |
 | `UPLOADING` | 上傳中 | 不顯示領取碼 |
-| `CLAIM_READY` | 已上傳＋領取碼＋有效時間 | 可回預覽 |
+| `CLAIM_READY` | 6 位領取碼＋`VALID 24H` | 持續顯示；下一次快門拍新照片 |
 | `ERROR` | 錯誤碼與處置 | 重試／重開 |
 
 只有 Server `complete` 確認原圖 object 存在後，裝置才能顯示領取碼。畫面空間不足時至少顯示大字領取碼、剩餘分鐘與 `已上傳` 狀態，不做 QR Code。
@@ -88,10 +97,13 @@ Device credential 必須可由管理員撤銷。它可以是高熵 opaque token�
 2. 在 PSRAM 配置自有 buffer 並複製完整內容。
 3. 立刻 `esp_camera_fb_return(fb)`，不得持有已歸還的 framebuffer pointer。
 4. 使用 mutex 原子替換 `latestJpeg`、長度與同步狀態。
-5. R2 PUT 期間禁止釋放正在傳送的 buffer。
+5. `UploadManager` 在 mutex 內複製另一份 owned PSRAM snapshot；R2 PUT 只讀
+   該 snapshot，因此下一次成功拍攝可安全替換 `LatestPhotoBuffer`。
 6. 上傳成功後仍可保留到下一次成功拍攝；斷電後消失。
 
-若配置、拍攝或上傳失敗，保留上一張有效照片並顯示錯誤，不得產生領取碼。
+若配置或拍攝失敗，保留上一張有效照片。若上傳失敗，本機最新照片仍可拍攝
+與回看但不得產生領取碼；新拍攝會取代排隊中的舊上傳。已開始的舊 HTTP
+request 可結束，但 generation 不符的舊 code 不會顯示。
 
 ## 6. NFC 與領取碼
 
