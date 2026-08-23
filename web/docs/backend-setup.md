@@ -433,10 +433,18 @@ type ProcessingOptions = {
   customText: string;
   defaultText: string;
   filterPreset: "none" | "tiger-film" | "jungle-green" | "baby-tiger" | "night-hunter";
+  brightness: number;       // 60..140，100 為原值
+  contrast: number;         // 60..160，100 為原值
+  saturation: number;       // 0..180，100 為原值
+  warmth: number;           // -50..50，0 為中性
+  grain: number;            // 0..40
+  vignette: number;         // 0..60
+  textSize: number;         // 70..160，100 為原值
+  textPosition: "left" | "center" | "right";
 };
 ```
 
-這是目前 Frontend Canvas 使用的型別。四項可任意開關或全部關閉；`textEnabled = false` 對應正式 metadata 的 `textMode = none`。`capturedAt` 來自裝置／照片 metadata，前端只有 `timestampEnabled` 顯示開關，不接受使用者任意修改正式拍攝時間。預設文字固定為：`ROAR!`、`抓到你了！`、`虎視眈眈！`、`今日獵物 +1`、`小虎拍到了！`。Publish 前要將抽到的實際內容解析並保存為 `resolvedText`，另加入 `processingVersion`。
+這是目前 Frontend Canvas v2 使用的型別。拍立得框、日期與文字可任意開關；另外可調整亮度、對比、飽和度、色溫、顆粒、暗角、文字大小及文字位置，並可一鍵回到預設值。`textEnabled = false` 對應正式 metadata 的 `textMode = none`。`capturedAt` 來自裝置／照片 metadata，前端只有 `timestampEnabled` 顯示開關，不接受使用者任意修改正式拍攝時間。預設文字固定為：`ROAR!`、`抓到你了！`、`虎視眈眈！`、`今日獵物 +1`、`小虎拍到了！`。Publish 前要將抽到的實際內容解析並保存為 `resolvedText`，並以 `processingVersion = canvas-v2` 標記完成圖處理版本。
 
 ### 10.2 `POST /api/drafts/:id/process/initiate`
 

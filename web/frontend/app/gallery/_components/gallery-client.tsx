@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { IconArrowRight, IconPhoto } from "@tabler/icons-react";
+import { IconPhoto } from "@tabler/icons-react";
 
 import { PhotoCard } from "@/app/gallery/_components/photo-card";
 import { buttonVariants } from "@/components/ui/button";
@@ -47,11 +47,6 @@ export function GalleryClient() {
             {message}
           </p>
         </div>
-
-        <Link href="/create" className={cn(buttonVariants(), "w-full md:w-auto")}>
-          後製一張照片
-          <IconArrowRight aria-hidden="true" />
-        </Link>
       </header>
 
       <section className="pt-10" aria-labelledby="gallery-heading">
@@ -67,7 +62,7 @@ export function GalleryClient() {
         {isLoading ? (
           <div className="grid gap-x-5 gap-y-10 md:grid-cols-3" aria-label="正在讀取照片">
             {[0, 1, 2].map((item) => (
-              <div key={item} className="aspect-[4/5] animate-pulse rounded-primary bg-secondary/45 motion-reduce:animate-none" />
+              <div key={item} className="aspect-4/5 animate-pulse rounded-primary bg-secondary/45 motion-reduce:animate-none" />
             ))}
           </div>
         ) : photos.length === 0 ? (

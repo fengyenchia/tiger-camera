@@ -31,7 +31,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="zh-Hant" className="antialiased processor-scrollbar">
+    <html lang="zh-Hant" className="antialiased processor-scrollbar" data-scroll-behavior="smooth">
       <body>
         <SiteNavbar />
         {children}

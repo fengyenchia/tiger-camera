@@ -11,7 +11,7 @@
 1. ESP32 以 device credential 建立草稿並 PUT 原始 JPEG 到私人 R2。
 2. Backend `HeadObject` 確認後，回傳 6 位、24 小時有效的配對碼。
 3. 使用者掃 NFC 開啟 `/create`，輸入配對碼並取得單張草稿 UUID token。
-4. 瀏覽器暫時讀取原圖，執行 Canvas 拍立得框、拍攝時間、文字與復古濾鏡。
+4. 瀏覽器暫時讀取原圖，執行 Canvas 拍立得框、拍攝時間、文字、基本調色與復古質感。
 5. 使用者可只下載完成圖；只有勾選公開才上傳 finished JPEG 並 publish。
 6. 公開成功後 Backend 刪除暫存原圖，`/gallery` 只顯示完成圖。
 7. 管理員在 `/admin` 建立／撤銷裝置，並可一次永久刪除公開照片。
@@ -21,8 +21,8 @@
 ### Frontend
 
 - `/`、`/create`、`/gallery`、`/admin`。
-- Canvas 四項效果可任意組合或全部關閉；日期只顯示 API 拍攝時間。
-- 完成圖下載、presigned R2 PUT、publish 與公開相簿。
+- Canvas v2 支援拍立得框、日期、文字、亮度、對比、飽和度、色溫、顆粒、暗角、文字大小／位置與一鍵重設；日期只顯示 API 拍攝時間。
+- 完成圖下載、presigned R2 PUT、publish、自動前往公開相簿與相簿大圖 Dialog。
 - Admin JWT localStorage＋Axios Bearer、裝置管理與一次永久刪除 UI。
 - Claim UUID token sessionStorage；Frontend 不保存 R2／Neon secrets。
 

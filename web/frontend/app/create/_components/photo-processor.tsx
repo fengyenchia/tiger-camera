@@ -2,9 +2,9 @@
 
 import { FormEvent, useEffect, useId, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { isAxiosError } from "axios";
 import {
-  IconArrowRight,
   IconCloudUpload,
   IconDownload,
   IconKey,
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import {
   DEFAULT_TEXTS,
   processPhoto,
@@ -84,6 +85,14 @@ const initialOptions: ProcessingOptions = {
   defaultText: DEFAULT_TEXTS[0],
   filterPreset: "tiger-film",
   capturedAt: toLocalDateTime(new Date()),
+  brightness: 100,
+  contrast: 100,
+  saturation: 100,
+  warmth: 0,
+  grain: 0,
+  vignette: 0,
+  textSize: 100,
+  textPosition: "left",
 };
 
 type ToggleOptionProps = {
@@ -112,7 +121,45 @@ function ToggleOption({ checked, description, label, onChange }: ToggleOptionPro
   );
 }
 
+type RangeControlProps = {
+  label: string;
+  max: number;
+  min: number;
+  onChange: (value: number) => void;
+  step?: number;
+  value: number;
+  valueLabel?: string;
+};
+
+function RangeControl({
+  label,
+  max,
+  min,
+  onChange,
+  step = 1,
+  value,
+  valueLabel = `${value}`,
+}: RangeControlProps) {
+  return (
+    <div className="space-y-3 rounded-primary border border-primary/25 bg-background p-4">
+      <div className="flex items-center justify-between gap-4 text-sm font-extrabold">
+        <span>{label}</span>
+        <output className="min-w-12 text-right text-primary">{valueLabel}</output>
+      </div>
+      <Slider
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={[value]}
+        onValueChange={([nextValue]) => onChange(nextValue)}
+      />
+    </div>
+  );
+}
+
 export function PhotoProcessor() {
+  const router = useRouter();
   const [claimCode, setClaimCode] = useState("");
   const [draft, setDraft] = useState<ClaimedDraft | null>(null);
   const [originalBlob, setOriginalBlob] = useState<Blob | null>(null);
@@ -174,6 +221,14 @@ export function PhotoProcessor() {
 
   function updateOptions(patch: Partial<ProcessingOptions>) {
     setOptions((current) => ({ ...current, ...patch }));
+  }
+
+  function resetOptions() {
+    setOptions((current) => ({
+      ...initialOptions,
+      capturedAt: current.capturedAt,
+      defaultText: DEFAULT_TEXTS[0],
+    }));
   }
 
   async function loadClaimedPhoto(claimed: ClaimedDraft, code: string) {
@@ -258,10 +313,11 @@ export function PhotoProcessor() {
         customText: textMode === "custom" ? options.customText.trim() : null,
         resolvedText,
         filterPreset: options.filterPreset,
-        processingVersion: "canvas-v1",
+        processingVersion: "canvas-v2",
       });
       window.sessionStorage.removeItem(`tiger_camera_claim_${draft.id}`);
       setMessage("完成圖已保存並加入公開相簿");
+      router.push("/gallery");
     } catch {
       setMessage("公開沒有完成，仍可先下載照片後再重試");
     } finally {
@@ -385,8 +441,8 @@ export function PhotoProcessor() {
           >
             <Card>
               <CardHeader>
-                <CardTitle>後製內容</CardTitle>
-                <CardDescription>四項可以任意複選，也可以全部關閉。</CardDescription>
+                <CardTitle>版面與文字</CardTitle>
+                <CardDescription>選擇相框、日期與照片上的文字配置。</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <ToggleOption
@@ -442,9 +498,87 @@ export function PhotoProcessor() {
                         </Button>
                       </div>
                     )}
+
+                    <RangeControl
+                      label="文字大小"
+                      min={40}
+                      max={160}
+                      step={5}
+                      value={options.textSize}
+                      valueLabel={`${options.textSize}%`}
+                      onChange={(textSize) => updateOptions({ textSize })}
+                    />
+
+                    <div className="rounded-primary border border-primary/25 bg-background p-4">
+                      <span id="text-position-label" className="mb-3 block font-extrabold">文字位置</span>
+                      <Select
+                        value={options.textPosition}
+                        onValueChange={(textPosition) =>
+                          updateOptions({ textPosition: textPosition as ProcessingOptions["textPosition"] })
+                        }
+                      >
+                        <SelectTrigger aria-labelledby="text-position-label">
+                          <SelectValue placeholder="選擇文字位置" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="left">靠左</SelectItem>
+                          <SelectItem value="center">置中</SelectItem>
+                          <SelectItem value="right">靠右</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle>基本調整</CardTitle>
+                <CardDescription>微調照片明暗、層次與整體色彩。</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <RangeControl
+                  label="亮度"
+                  min={20}
+                  max={180}
+                  value={options.brightness}
+                  valueLabel={`${options.brightness}%`}
+                  onChange={(brightness) => updateOptions({ brightness })}
+                />
+                <RangeControl
+                  label="對比"
+                  min={20}
+                  max={180}
+                  value={options.contrast}
+                  valueLabel={`${options.contrast}%`}
+                  onChange={(contrast) => updateOptions({ contrast })}
+                />
+                <RangeControl
+                  label="飽和度"
+                  min={0}
+                  max={180}
+                  value={options.saturation}
+                  valueLabel={`${options.saturation}%`}
+                  onChange={(saturation) => updateOptions({ saturation })}
+                />
+                <RangeControl
+                  label="色溫"
+                  min={-100}
+                  max={100}
+                  value={options.warmth}
+                  valueLabel={options.warmth === 0 ? "中性" : options.warmth > 0 ? `暖 +${options.warmth}` : `冷 ${options.warmth}`}
+                  onChange={(warmth) => updateOptions({ warmth })}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>復古質感</CardTitle>
+                <CardDescription>選擇色調，再加入底片顆粒與暗角。</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <div className="rounded-primary border border-primary/25 bg-background p-4">
                   <span id="filter-label" className="mb-3 block font-extrabold">復古濾鏡</span>
                   <Select
@@ -465,6 +599,26 @@ export function PhotoProcessor() {
                     </SelectContent>
                   </Select>
                 </div>
+                <RangeControl
+                  label="顆粒感"
+                  min={0}
+                  max={100}
+                  value={options.grain}
+                  valueLabel={`${options.grain}%`}
+                  onChange={(grain) => updateOptions({ grain })}
+                />
+                <RangeControl
+                  label="暗角"
+                  min={0}
+                  max={100}
+                  value={options.vignette}
+                  valueLabel={`${options.vignette}%`}
+                  onChange={(vignette) => updateOptions({ vignette })}
+                />
+                <Button className="w-full" variant="secondary" onClick={resetOptions}>
+                  <IconRefresh aria-hidden="true" />
+                  重設所有後製
+                </Button>
               </CardContent>
             </Card>
 
@@ -497,10 +651,6 @@ export function PhotoProcessor() {
                   {isPublishing ? <IconRefresh className="animate-spin motion-reduce:animate-none" /> : <IconCloudUpload />}
                   {isPublishing ? "公開中" : "公開到網站相簿"}
                 </Button>
-                <Link href="/gallery" className={cn(buttonVariants({ variant: "ghost" }), "w-full")}>
-                  查看公開相簿
-                  <IconArrowRight aria-hidden="true" />
-                </Link>
                 <p className="min-h-6 text-sm font-extrabold leading-6 text-primary" aria-live="polite">
                   {message}
                 </p>

@@ -26,7 +26,7 @@ export type PublishDraftInput = {
   frameEnabled: boolean;
   height: number;
   processedSize: number;
-  processingVersion: "canvas-v1";
+  processingVersion: "canvas-v1" | "canvas-v2";
   resolvedText: string | null;
   customText: string | null;
   textMode: TextMode;

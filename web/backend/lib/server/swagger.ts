@@ -129,7 +129,7 @@ export function getApiDocs() {
                 type: "string",
                 enum: ["none", "tiger-film", "jungle-green", "baby-tiger", "night-hunter"],
               },
-              processingVersion: { type: "string", example: "canvas-v1" },
+              processingVersion: { type: "string", example: "canvas-v2" },
             },
           },
         },

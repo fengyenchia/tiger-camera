@@ -117,7 +117,7 @@ input {
 
 @layer components {
   .title {
-    @apply font-title text-5xl font-black leading-[1.25] tracking-[-0.04em] text-primary md:text-[5.25rem];
+    @apply font-title text-5xl font-black leading-tight tracking-[-0.04em] text-primary md:text-[5.25rem];
   }
   .subTitle {
     @apply font-title text-4xl font-black tracking-[-0.04em] text-primary md:text-6xl;
@@ -147,5 +147,17 @@ input {
   .processor-scrollbar::-webkit-scrollbar-thumb:hover {
     background: color-mix(in srgb, var(--foreground) 70%, transparent);
     background-clip: content-box;
+  }
+
+  .gallery-photo-image {
+    transform: scale(1);
+    transition: transform 600ms ease;
+    will-change: transform;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .gallery-photo-trigger:hover .gallery-photo-image {
+      transform: scale(1.1);
+    }
   }
 }

@@ -1,4 +1,5 @@
 export type TextMode = "custom" | "default";
+export type TextPosition = "left" | "center" | "right";
 
 export type FilterPreset = "none" | "tiger-film" | "jungle-green" | "baby-tiger" | "night-hunter";
 
@@ -11,6 +12,14 @@ export type ProcessingOptions = {
   defaultText: string;
   filterPreset: FilterPreset;
   capturedAt: string;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  warmth: number;
+  grain: number;
+  vignette: number;
+  textSize: number;
+  textPosition: TextPosition;
 };
 
 export const DEFAULT_TEXTS = [
@@ -22,7 +31,7 @@ export const DEFAULT_TEXTS = [
 ] as const;
 
 const FILTERS: Record<FilterPreset, string> = {
-  none: "none",
+  none: "",
   "tiger-film": "sepia(0.3) saturate(1.08) contrast(1.08) brightness(1.03)",
   "jungle-green": "sepia(0.18) hue-rotate(32deg) saturate(0.9) contrast(1.08)",
   "baby-tiger": "sepia(0.16) saturate(1.2) brightness(1.08) contrast(0.96)",
@@ -61,8 +70,108 @@ export function hasAnyEffect(options: ProcessingOptions) {
     options.frameEnabled ||
     options.timestampEnabled ||
     options.textEnabled ||
-    options.filterPreset !== "none"
+    options.filterPreset !== "none" ||
+    options.brightness !== 100 ||
+    options.contrast !== 100 ||
+    options.saturation !== 100 ||
+    options.warmth !== 0 ||
+    options.grain !== 0 ||
+    options.vignette !== 0
   );
+}
+
+function applyWarmth(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  warmth: number,
+) {
+  if (!warmth) return;
+  const alpha = Math.abs(warmth) / 100 * 0.2;
+  context.save();
+  context.globalCompositeOperation = "soft-light";
+  context.fillStyle = warmth > 0
+    ? `rgb(238 137 72 / ${alpha})`
+    : `rgb(74 142 218 / ${alpha})`;
+  context.fillRect(x, y, width, height);
+  context.restore();
+}
+
+function applyGrain(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  amount: number,
+) {
+  if (!amount) return;
+  const noise = document.createElement("canvas");
+  noise.width = 96;
+  noise.height = 96;
+  const noiseContext = noise.getContext("2d");
+  if (!noiseContext) return;
+
+  const pixels = noiseContext.createImageData(noise.width, noise.height);
+  let seed = width * 31 + height * 17;
+  for (let index = 0; index < pixels.data.length; index += 4) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const value = seed >>> 24;
+    pixels.data[index] = value;
+    pixels.data[index + 1] = value;
+    pixels.data[index + 2] = value;
+    pixels.data[index + 3] = 255;
+  }
+  noiseContext.putImageData(pixels, 0, 0);
+  const pattern = context.createPattern(noise, "repeat");
+  if (!pattern) return;
+
+  context.save();
+  context.globalAlpha = amount / 100 * 0.38;
+  context.globalCompositeOperation = "soft-light";
+  context.fillStyle = pattern;
+  context.fillRect(x, y, width, height);
+  context.restore();
+}
+
+function applyVignette(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  amount: number,
+) {
+  if (!amount) return;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const innerRadius = Math.min(width, height) * 0.24;
+  const outerRadius = Math.hypot(width / 2, height / 2);
+  const gradient = context.createRadialGradient(
+    centerX,
+    centerY,
+    innerRadius,
+    centerX,
+    centerY,
+    outerRadius,
+  );
+  gradient.addColorStop(0, "rgb(0 0 0 / 0)");
+  gradient.addColorStop(0.58, "rgb(0 0 0 / 0)");
+  gradient.addColorStop(1, `rgb(0 0 0 / ${amount / 100 * 0.82})`);
+  context.fillStyle = gradient;
+  context.fillRect(x, y, width, height);
+}
+
+function textPlacement(position: TextPosition, width: number, padding: number) {
+  if (position === "center") {
+    return { align: "center" as const, x: width / 2 };
+  }
+  if (position === "right") {
+    return { align: "right" as const, x: width - padding };
+  }
+  return { align: "left" as const, x: padding };
 }
 
 export async function processPhoto(file: File, options: ProcessingOptions) {
@@ -95,7 +204,12 @@ export async function processPhoto(file: File, options: ProcessingOptions) {
     }
 
     context.save();
-    context.filter = FILTERS[options.filterPreset];
+    context.filter = [
+      FILTERS[options.filterPreset],
+      `brightness(${options.brightness / 100})`,
+      `contrast(${options.contrast / 100})`,
+      `saturate(${options.saturation / 100})`,
+    ].filter(Boolean).join(" ");
     context.drawImage(image, side, top, photoWidth, photoHeight);
     context.restore();
 
@@ -104,7 +218,15 @@ export async function processPhoto(file: File, options: ProcessingOptions) {
       context.fillRect(side, top, photoWidth, photoHeight);
     }
 
-    const fontSize = Math.max(18, Math.round(Math.min(photoWidth, photoHeight) * 0.035));
+    applyWarmth(context, side, top, photoWidth, photoHeight, options.warmth);
+    applyGrain(context, side, top, photoWidth, photoHeight, options.grain);
+    applyVignette(context, side, top, photoWidth, photoHeight, options.vignette);
+
+    const baseFontSize = Math.max(
+      18,
+      Math.round(Math.min(photoWidth, photoHeight) * 0.035),
+    );
+    const fontSize = Math.max(8, Math.round(baseFontSize * options.textSize / 100));
     context.font = `700 ${fontSize}px "Noto Sans TC Local", sans-serif`;
     context.textBaseline = "bottom";
 
@@ -116,29 +238,29 @@ export async function processPhoto(file: File, options: ProcessingOptions) {
       : "";
 
     if (options.frameEnabled) {
+      const placement = textPlacement(options.textPosition, canvas.width, side);
+      context.textAlign = placement.align;
       context.fillStyle = "#9f332f";
-      if (text) context.fillText(text, side, canvas.height - Math.max(16, bottom * 0.48));
+      if (text) context.fillText(text, placement.x, canvas.height - Math.max(16, bottom * 0.48));
       if (timestamp) {
         context.font = `600 ${Math.max(14, Math.round(fontSize * 0.62))}px "Noto Sans TC Local", sans-serif`;
         context.fillStyle = "#775d55";
-        context.fillText(timestamp, side, canvas.height - Math.max(8, bottom * 0.16));
+        context.fillText(timestamp, placement.x, canvas.height - Math.max(8, bottom * 0.16));
       }
     } else {
       const padding = Math.max(14, Math.round(fontSize * 0.7));
       const lines = [text, timestamp].filter(Boolean);
       if (lines.length) {
-        const widest = Math.max(...lines.map((line) => context.measureText(line).width));
-        const boxHeight = lines.length * fontSize * 1.35 + padding;
-        context.fillStyle = "rgb(75 43 40 / 0.58)";
-        context.fillRect(
-          padding,
-          canvas.height - boxHeight - padding,
-          Math.min(canvas.width - padding * 2, widest + padding * 2),
-          boxHeight,
-        );
+        const placement = textPlacement(options.textPosition, canvas.width, padding * 2);
+        context.textAlign = placement.align;
         context.fillStyle = "#fffaf0";
+        context.strokeStyle = "rgb(45 30 28 / 0.72)";
+        context.lineJoin = "round";
+        context.lineWidth = Math.max(2, Math.round(fontSize * 0.12));
         lines.forEach((line, index) => {
-          context.fillText(line, padding * 2, canvas.height - padding * 1.7 - (lines.length - 1 - index) * fontSize * 1.3);
+          const lineY = canvas.height - padding * 1.7 - (lines.length - 1 - index) * fontSize * 1.3;
+          context.strokeText(line, placement.x, lineY);
+          context.fillText(line, placement.x, lineY);
         });
       }
     }
