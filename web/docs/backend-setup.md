@@ -90,6 +90,8 @@ photos/{photoId}/finished.jpg      # 公開完成圖，永久保存至管理員�
 
 R2 CORS 只需要 hosted browser 上傳 processed JPEG；ESP32 的 original PUT 不受瀏覽器 CORS 限制：
 
+私人原圖的 `GET /api/drafts/{id}/image` 由 Backend 驗證 claim token 後直接回傳 JPEG，不再讓瀏覽器跟隨 307 redirect 讀取 R2；因此私人原圖讀取不依賴 R2 GET CORS。R2 CORS 仍需允許 Frontend 直接 PUT 後製完成圖。
+
 ```json
 [
   {

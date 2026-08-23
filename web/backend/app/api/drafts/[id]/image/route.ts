@@ -1,7 +1,5 @@
-import { NextResponse } from "next/server";
-
 import { requireClaim } from "@/lib/server/claim-auth";
-import { createJpegGetUrl } from "@/lib/server/r2";
+import { getJpegObject } from "@/lib/server/r2";
 import { ApiError, handleRouteError } from "@/lib/server/validation";
 
 export const runtime = "nodejs";
@@ -11,10 +9,10 @@ export const runtime = "nodejs";
  * /api/drafts/{id}/image:
  *   get:
  *     tags: [Drafts]
- *     summary: 取得私人原圖的短效 R2 下載網址
+ *     summary: 由 Backend 驗證 claim token 後傳回私人原圖
  *     security: [{ ClaimAuth: [] }]
  *     responses:
- *       307: { description: Redirect 到短效 R2 GET URL }
+ *       200: { description: JPEG 原圖 }
  *       401: { description: Claim token 無效 }
  */
 export async function GET(
@@ -25,12 +23,19 @@ export async function GET(
     const { id } = await context.params;
     const { draft } = await requireClaim(request, id);
     if (!draft.originalKey) throw new ApiError("ORIGINAL_NOT_FOUND", 404);
-    return NextResponse.redirect(await createJpegGetUrl(draft.originalKey), {
-      status: 307,
-      headers: { "Cache-Control": "private, no-store" },
+    const object = await getJpegObject(draft.originalKey);
+    if (!object.Body) throw new ApiError("ORIGINAL_NOT_FOUND", 404);
+    const bytes = await object.Body.transformToByteArray();
+    return new Response(Buffer.from(bytes), {
+      status: 200,
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Content-Disposition": "inline",
+        "Content-Length": String(bytes.byteLength),
+        "Content-Type": "image/jpeg",
+      },
     });
   } catch (error) {
     return handleRouteError(error);
   }
 }
-

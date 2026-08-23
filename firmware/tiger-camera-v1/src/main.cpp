@@ -322,10 +322,12 @@ void loop() {
   }
 
   if (state == CameraState::claimReady) {
-    // Keep the usable code visible until the owner deliberately takes the next
-    // photo. The new successful capture replaces both the local JPEG and code.
+    // The first press dismisses the code and returns to live view. A later
+    // press from live view captures the next photo, preventing an accidental
+    // shot while the owner is only trying to leave the claim screen.
     if (shutter.pressed()) {
-      capturePhoto();
+      latestClaimAvailable = false;
+      enterState(CameraState::liveView);
     }
     return;
   }

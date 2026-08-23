@@ -58,6 +58,13 @@ export async function createJpegGetUrl(key: string, expiresIn = 180) {
   );
 }
 
+export async function getJpegObject(key: string) {
+  const env = getR2Env();
+  return getR2().send(
+    new GetObjectCommand({ Bucket: env.r2BucketName, Key: key }),
+  );
+}
+
 export async function headObject(key: string) {
   const env = getR2Env();
   return getR2().send(

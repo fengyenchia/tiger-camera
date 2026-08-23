@@ -38,8 +38,8 @@
   HTTPS timeout、R2 PUT 或熱點斷線不會卡住 Core 1 的預覽與快門。
 - 新拍攝會取代尚未開始上傳的舊工作；若舊工作已在 HTTP request 中，允許
   該 request 結束，但只顯示與目前最新照片 generation 相符的領取碼。
-- `complete` 成功前不顯示領取碼。成功後顯示 6 位大字與 `VALID 24H`，直到
-  使用者按下快門拍攝下一張。
+- `complete` 成功前不顯示領取碼。成功後顯示 6 位大字與 `VALID 24H`；在
+  領取碼畫面短按一次只返回即時預覽，回到預覽後再次短按才拍攝下一張。
 - API 與 R2 都使用 CA 驗證的 HTTPS；不使用 `setInsecure()`，device
   credential、R2／Neon／Admin secrets 皆不輸出至 Serial。
 

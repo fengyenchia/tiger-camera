@@ -190,7 +190,7 @@ export function PhotoProcessor() {
         capturedAt: toLocalDateTime(claimed.capturedAt),
       }));
     } catch {
-      setMessage("照片已領取，但原圖下載失敗；請檢查 R2 CORS 後按「重新載入原圖」");
+      setMessage("照片已領取，但原圖下載失敗；請稍後按「重新載入原圖」再試一次");
     } finally {
       setIsLoadingOriginal(false);
     }
