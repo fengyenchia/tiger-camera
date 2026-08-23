@@ -14,6 +14,18 @@ export async function claimDraft(code: string) {
   });
   return data.draft;
 }
+
+export async function downloadClaimedPhoto(
+  draftId: string,
+  claimToken: string,
+) {
+  const { data } = await apiClient.get<Blob>(`/drafts/${draftId}/image`, {
+    headers: { Authorization: `Bearer ${claimToken}` },
+    responseType: "blob",
+  });
+  return data;
+}
+
 export async function uploadProcessedPhoto(
   draftId: string,
   claimToken: string,

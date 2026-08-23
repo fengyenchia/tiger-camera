@@ -97,10 +97,13 @@ export function handleRouteError(error: unknown) {
     return NextResponse.json({ code: error.code }, { status: error.status });
   }
   const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
-  if (message.startsWith("MISSING_ENV_") || message === "ADMIN_JWT_SECRET_TOO_SHORT") {
+  if (
+    message.startsWith("MISSING_ENV_") ||
+    message === "ADMIN_JWT_SECRET_TOO_SHORT" ||
+    message === "INVALID_API_PUBLIC_URL"
+  ) {
     return NextResponse.json({ code: "SERVER_NOT_CONFIGURED" }, { status: 503 });
   }
   console.error("Tiger Camera API error", error);
   return NextResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 });
 }
-

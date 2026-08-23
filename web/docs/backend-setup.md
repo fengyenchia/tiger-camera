@@ -225,6 +225,8 @@ API_PUBLIC_URL=http://localhost:3001
 
 正式 Backend 的 `API_PUBLIC_URL` 設為 `https://api.tiger-camera.fengyenchia.com`，Frontend 的 `NEXT_PUBLIC_API_BASE_URL` 設為 `https://api.tiger-camera.fengyenchia.com/api`。
 
+`API_PUBLIC_URL` 只能填一個 Backend 根網址：不可用逗號同時填 localhost 與正式網址，也不可在結尾加 `/api`。本機與 Vercel 分別使用各自的環境變數值。
+
 ## 6.1 OpenAPI 與 Swagger UI
 
 目前使用：

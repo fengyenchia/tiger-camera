@@ -12,7 +12,12 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 
-import { claimDraft, publishDraft, uploadProcessedPhoto } from "@/api/drafts";
+import {
+  claimDraft,
+  downloadClaimedPhoto,
+  publishDraft,
+  uploadProcessedPhoto,
+} from "@/api/drafts";
 import type { ClaimedDraft } from "@/api/types";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -175,12 +180,7 @@ export function PhotoProcessor() {
     setIsLoadingOriginal(true);
     setMessage("領取成功，正在下載私人原圖…");
     try {
-      const response = await fetch(claimed.originalUrl, {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${claimed.claimToken}` },
-      });
-      if (!response.ok) throw new Error(`ORIGINAL_HTTP_${response.status}`);
-      const blob = await response.blob();
+      const blob = await downloadClaimedPhoto(claimed.id, claimed.claimToken);
       if (!blob.size) throw new Error("ORIGINAL_EMPTY");
 
       setOriginalBlob(blob);

@@ -62,5 +62,21 @@ export function getCronSecret() {
 
 export function getApiUrl(path: string) {
   const base = normalizeUrl(process.env.API_PUBLIC_URL?.trim() || "http://localhost:3001");
+  let parsed: URL;
+  try {
+    parsed = new URL(base);
+  } catch {
+    throw new Error("INVALID_API_PUBLIC_URL");
+  }
+  if (
+    !["http:", "https:"].includes(parsed.protocol) ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.pathname !== "/"
+  ) {
+    throw new Error("INVALID_API_PUBLIC_URL");
+  }
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
