@@ -20,7 +20,7 @@ web/
 - Backend：`https://api.tiger-camera.fengyenchia.com`
 - Swagger：`https://api.tiger-camera.fengyenchia.com/api/docs`
 
-Neon、R2、Vercel、DNS 與實機上傳／領取的功能流程已接通。發布前仍要補跨手機、壓力、裝置撤銷與清理一致性測試。
+Neon、R2、Vercel、DNS 與實機上傳／領取的功能流程已接通；Android Chrome 的 W0／I0 已通過，目前進入 P0。發布前仍要補 iPhone Safari、壓力、裝置撤銷與清理一致性測試。
 
 公開 API endpoint 與 `NEXT_PUBLIC_API_BASE_URL` 會進入瀏覽器 bundle，本來就不是秘密。Neon URL、R2 keys、Admin／JWT secrets、device credential 與本機 Postman environment 則由根目錄及本目錄 `.gitignore` 排除。
 

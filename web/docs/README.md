@@ -34,9 +34,11 @@
 - 發布／逾期後清除 Original；失敗由 cleanup 重試。
 - 管理員刪除是一次永久刪除，沒有垃圾桶或復原。
 
-## 目前階段：W0／I0
+## W0／I0 結果與目前階段
 
-1. iOS Safari、Android Chrome 的領取、Canvas、下載與公開矩陣。
+Android Chrome 的 W0／I0 功能流程已通過，目前進入 P0。Web 的發布前待辦移至 R0：
+
+1. iPhone Safari 的領取、Canvas、下載與公開矩陣。
 2. 裝置撤銷、30 次完整上傳、5 次斷線恢復。
 3. Cleanup cron 的 Neon／R2 一致性證據與 orphan object 測試。
 4. 草稿待傳 IndexedDB／下載 fallback 的發布前決策與測試。

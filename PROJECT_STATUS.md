@@ -4,7 +4,7 @@
 
 ## 結論
 
-Tiger Camera 已完成 Gate H1 與 Gate L0 的功能驗收，現在正式進入 W0／I0。使用者已確認固定 XGA 拍照與螢幕沒有問題；Web 已完成公開照片卡片下載按鈕與 Backend 直接附件下載路由，下一步是部署後的 iPhone／Android 與 NFC 實機驗收。
+Tiger Camera 已完成 Gate H1、L0、W0 與 I0 的功能驗收。2026-08-24 使用者以 Android Chrome 實測領取、Canvas 後製、私人與公開下載、發布、相簿、管理員永久刪除及 NFC 固定網址流程皆通過。iPhone Safari 移到 R0 發布前相容性檢查，不阻擋目前進入 P0。
 
 ## 已確認硬體
 
@@ -40,11 +40,16 @@ Tiger Camera 已完成 Gate H1 與 Gate L0 的功能驗收，現在正式進入 
 
 ## 下一步
 
-1. **W0**：部署最新前後端，完成 iOS Safari／Android Chrome 的領取、Canvas 亮度與輸出、公開照片直接下載、發布、相簿與管理員刪除矩陣。
-2. **I0**：把 NFC 寫成固定 `/create` 網址，以 iPhone／Android 驗證掃描位置、開啟與手動網址備援；驗收前不要永久鎖定。
-3. **P0**：外接有保護的 3.7V 單節鋰電池與 5V 充電升壓模組；完成極性、輸出、壓降、溫升、低壓截止與續航測試。
-4. **E0**：量測全部零件後做基本矩形外殼。
-5. **R0**：壓力／斷線／撤銷測試與草稿、R2 物件清理證據。
+1. **P0**：外接有保護的 3.7V 單節鋰電池與 5V 充電升壓模組；完成極性、輸出、壓降、溫升、低壓截止與續航測試。
+2. **E0**：量測全部零件後做基本矩形外殼。
+3. **R0**：iPhone Safari 相容性、壓力／斷線／撤銷測試與草稿、R2 物件清理證據。
+
+## 單一裝置驗證決策
+
+- 現有 Tiger Camera S3 的 device credential 已完成一次性 provision；正常使用不需再次到管理頁取得。
+- 不採用「只要連上任意 Wi-Fi 就能匿名上傳」。Backend 是公開網域，Wi-Fi 無法證明請求來自這台相機；匿名 initiate 會讓任何人消耗 R2／Neon 額度。
+- V1 先保留現有 credential 驗證。管理頁的建立／撤銷裝置區不是日常操作，可以在後續 UI 精簡時隱藏。
+- 若日後要移除 devices 管理流程，安全替代方案是一組只存在 Backend environment 與韌體 `secrets.h` 的固定 `DEVICE_UPLOAD_TOKEN`，不能改成無驗證。
 
 ## P0 尚未鎖定的事
 

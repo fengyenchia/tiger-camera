@@ -26,7 +26,7 @@ Tiger Camera 是基本矩形外殼的小型數位相機，不再製作老虎造�
 
 - 6 位碼只是方便配對，不是高安全密碼；首次成功領取即失效，24 小時到期。
 - Claim 使用資料庫型 opaque UUID Bearer token，只能操作對應草稿。
-- Device credential 可撤銷，只能建立與完成自己的草稿。
+- Device credential 是單一相機的一次性 provision，可撤銷且只能建立與完成自己的草稿；日常拍照不需重新取得。Wi-Fi 不是 API 驗證，因此不開放匿名上傳。
 - Admin JWT 才能刪除公開照片。
 - 未公開的照片不得出現在公開列表。
 

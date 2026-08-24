@@ -35,6 +35,8 @@
 
 禁止事項：
 
+> 單一裝置只需初次建立並保存一次 credential，不是每次拍照前都要取得。Wi-Fi 只提供連線，無法驗證公開 API 的呼叫者；因此不能因為只有一台相機就移除 Device Bearer。若未來隱藏管理頁的裝置建立 UI，仍需保留現有 credential 或改用 Backend environment＋韌體共用的固定高熵 upload token。
+
 - ESP32 不保存 Admin JWT、R2 Access Key、Neon connection string 或管理員 JWT signing secret。
 - 領取碼只負責把人帶到某張照片，不視為安全密碼；猜到別人的碼是已接受的產品取捨。
 - 領取成功後配對碼立即失效；後續用資料庫保存的 UUID Bearer token 操作該張草稿。這個 token 不是 JWT，也不能呼叫管理員 API。
@@ -520,7 +522,7 @@ Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作
 ### Gate B：裝置生命週期
 
 1. 執行 `pnpm admin:hash-password`，設定 Admin 環境變數並從 `/admin` 登入。
-2. 從 `/admin` 建立一筆 device；credential 只顯示一次，立即保存。
+2. 初次安裝才從 `/admin` 建立一筆 device；credential 只顯示一次，立即保存到韌體 secrets。現有相機已完成後不需重做。
 3. 用 Postman 或固定 JPEG 模擬 ESP32 完成 `initiate → PUT → complete`。
 4. 驗證同一 `clientRequestId` 不重複。
 

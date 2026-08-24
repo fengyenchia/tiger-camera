@@ -41,13 +41,15 @@ Gate L0 的功能流程通過。以下屬 R0 發布前強化，不宣稱已測�
 
 ## W0：Web 與權限
 
+2026-08-24：使用者回報 Android Chrome 的 W0 全流程通過。下表功能視為 Android 實機通過；iPhone Safari 轉列 R0。
+
 | ID | 測試 | 通過條件 |
 | --- | --- | --- |
 | W-01 | 未領取草稿 | 公開 API 與相簿不可看見 |
 | W-02 | Claim scope | Token 只能讀寫自己的 draft |
 | W-03 | 後製選項 | 框、日期、文字、濾鏡與基本調整可獨立開關 |
 | W-04 | 輸出品質 | 直式／橫式 JPEG 尺寸合理，放大不因 Canvas 低解析而額外模糊 |
-| W-05 | 行動裝置 | iOS Safari、Android Chrome 可領取、下載、公開 |
+| W-05 | 行動裝置 | Android Chrome 已通過；iPhone Safari 於 R0 驗證領取、下載、公開 |
 | W-06 | 管理員 | 無 Admin Bearer 不可刪；有權限時一次永久刪除 |
 | W-07 | 清理 | 發布／逾期／刪除後 Neon 與 R2 最終一致 |
 | W-08 | Secrets | Frontend bundle、log、Git 沒有 R2／Neon／JWT secret |
@@ -57,8 +59,9 @@ W0／I0 的逐步手機與 NFC 執行表見 [`w0-i0-guide.md`](w0-i0-guide.md)�
 
 ## I0：NFC
 
-- [ ] NFC 只包含 `https://tiger-camera.fengyenchia.com/create`。
-- [ ] iPhone 與 Android 都可開啟。
+- [x] NFC 只包含 `https://tiger-camera.fengyenchia.com/create`。
+- [x] Android Chrome 可由 NFC 開啟並完成領取流程。
+- [ ] iPhone Safari 發布前相容性檢查（R0）。
 - [ ] 寫入後先不要永久鎖定；驗收位置與外殼材料後再鎖。
 - [ ] NFC 失敗時仍可手動開網址並輸入螢幕代碼。
 

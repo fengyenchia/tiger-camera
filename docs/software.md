@@ -34,7 +34,9 @@ flowchart LR
 - Wi-Fi／TLS 失敗不阻塞拍照。
 - API 與 R2 使用各自信任根；不使用 `setInsecure()`。
 
-韌體只保存 Wi-Fi 與可撤銷 device credential。R2 key、Neon URL、Admin secret、JWT signing secret 永遠不進韌體或 Serial。
+韌體只保存 Wi-Fi 與一次設定、可撤銷的 device credential。現有單一裝置不需每次重新取得 credential；Wi-Fi 連線本身不具有 Backend 驗證能力。R2 key、Neon URL、Admin secret、JWT signing secret 永遠不進韌體或 Serial。
+
+V1 保留 Device Bearer 驗證，因為 API 位於公開網域。管理頁建立裝置只是初次 provision／遺失後輪替工具，不是每次拍照流程。若未來精簡成單一固定 `DEVICE_UPLOAD_TOKEN`，仍必須同時存在 Backend environment 與韌體 secrets，不能開放匿名 initiate／complete。
 
 ## Web 邊界
 
