@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useId, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isAxiosError } from "axios";
 import {
@@ -19,7 +18,7 @@ import {
   uploadProcessedPhoto,
 } from "@/api/drafts";
 import type { ClaimedDraft } from "@/api/types";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -38,7 +37,6 @@ import {
   type FilterPreset,
   type ProcessingOptions,
 } from "@/lib/photo-processing/process-photo";
-import { cn } from "@/lib/utils";
 
 const FILTER_OPTIONS: { value: FilterPreset; label: string }[] = [
   { value: "none", label: "無濾鏡" },
@@ -76,6 +74,7 @@ async function getImageSize(blob: Blob) {
   }
 }
 
+// 初始後製選項
 const initialOptions: ProcessingOptions = {
   frameEnabled: true,
   timestampEnabled: true,
@@ -83,7 +82,7 @@ const initialOptions: ProcessingOptions = {
   textMode: "default",
   customText: "",
   defaultText: DEFAULT_TEXTS[0],
-  filterPreset: "tiger-film",
+  filterPreset: "none",
   capturedAt: toLocalDateTime(new Date()),
   brightness: 100,
   contrast: 100,
@@ -239,7 +238,7 @@ export function PhotoProcessor() {
       if (!blob.size) throw new Error("ORIGINAL_EMPTY");
 
       setOriginalBlob(blob);
-      setTitle(`Tiger Camera ${code}`);
+      setTitle(`Tiger Camera-${code}`);
       setOptions((current) => ({
         ...current,
         capturedAt: toLocalDateTime(claimed.capturedAt),
@@ -564,8 +563,8 @@ export function PhotoProcessor() {
                 />
                 <RangeControl
                   label="色溫"
-                  min={-100}
-                  max={100}
+                  min={-200}
+                  max={200}
                   value={options.warmth}
                   valueLabel={options.warmth === 0 ? "中性" : options.warmth > 0 ? `暖 +${options.warmth}` : `冷 ${options.warmth}`}
                   onChange={(warmth) => updateOptions({ warmth })}

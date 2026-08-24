@@ -1,5 +1,7 @@
 import Image from "next/image";
-import { Badge } from "@/components/ui/badge";
+import { IconDownload } from "@tabler/icons-react";
+
+import { buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { Photo } from "@/api/types";
+import { cn } from "@/lib/utils";
 
 const backgroundClasses = [
   "bg-primary",
@@ -24,6 +27,10 @@ function formatPhotoDate(value: string) {
   }).format(new Date(value));
 }
 
+function getDownloadUrl(imageUrl: string) {
+  return `${imageUrl}${imageUrl.includes("?") ? "&" : "?"}download=1`;
+}
+
 type PhotoCardProps = {
   photo: Photo;
   eager?: boolean;
@@ -33,6 +40,7 @@ export function PhotoCard({ photo, eager = false }: PhotoCardProps) {
   const colorIndex = photo.id
     .split("")
     .reduce((total, character) => total + character.charCodeAt(0), 0);
+  const downloadUrl = getDownloadUrl(photo.imageUrl);
 
   return (
     <article className="group min-w-0">
@@ -73,8 +81,8 @@ export function PhotoCard({ photo, eager = false }: PhotoCardProps) {
         </DialogContent>
       </Dialog>
 
-      <div className="px-1 pt-4">
-        <div className="min-w-0">
+      <div className="flex items-start justify-between gap-3 px-1 pt-4">
+        <div className="min-w-0 flex-1">
           <h3 className="truncate font-title text-xl font-bold text-primary">
             {photo.title}
           </h3>
@@ -82,6 +90,14 @@ export function PhotoCard({ photo, eager = false }: PhotoCardProps) {
             {formatPhotoDate(photo.createdAt)}
           </p>
         </div>
+        <a
+          href={downloadUrl}
+          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "shrink-0")}
+          aria-label={`下載「${photo.title}」`}
+          title="下載照片"
+        >
+          <IconDownload aria-hidden="true" />
+        </a>
       </div>
     </article>
   );

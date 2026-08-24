@@ -12,16 +12,18 @@
 - 使用者輸入領取碼，在自己的手機後製、下載完成圖或選擇公開；原圖不提供下載。
 - 公開相簿所有人可看；只有管理員可永久刪除任意照片。
 
-> 正式 R2／Neon、Device、Claim、Admin 與 Cleanup 程式已寫入 repository；但尚未使用你的真實 Cloudflare、Neon 與 Vercel Production 做 E2E。完成本文件的外部設定與驗收前，不代表已上線。
+> 2026-08-24 狀態：正式 Neon、R2、Frontend／Backend Vercel 與自訂網域已設定；Postman API 測試與 ESP32 實機 `initiate → R2 PUT → complete → claim → Canvas` 功能流程已跑通。發布前仍要補跨手機、量化斷線／壓力、裝置撤銷與 cleanup 一致性驗收。
 
-### 目前程式碼快照（2026-08-15）
+### 目前程式碼快照（2026-08-24）
 
 - Frontend 與 Backend 已拆成兩個 Next.js 專案，以 `web/pnpm-workspace.yaml` 管理。
 - Frontend 已完成 `/`、`/create`、`/gallery` 與 Axios 呼叫層。
 - Backend 已完成 Device initiate／complete、Claim、私人原圖、processed PUT／publish、公開照片、Admin 與 Cleanup Route Handlers。
 - Backend 已完成 `/api/docs` Swagger UI 與 `/api/openapi`；只列出實際存在的 endpoints。
 - `/create` 的拍攝時間由 API `capturedAt` 自動帶入；使用者只選擇是否顯示，不提供日期時間選擇器。
-- Frontend 已完成正式 presigned PUT／publish 與 `/admin`。Neon migration、R2 bucket、Vercel variables、DNS 與真實雲端 E2E 仍需由你完成。
+- Frontend 已完成正式 presigned PUT／publish、公開後跳轉相簿、相簿大圖 Dialog 與 `/admin`。
+- Private original 不再 redirect 到 R2；Backend 驗證 claim token 後直接代理 JPEG，避免瀏覽器 R2 GET CORS。
+- Neon migration、R2 bucket、Vercel variables、DNS 與實機功能 E2E 已完成。
 
 ## 1. 三種身份不要混在一起
 
@@ -415,7 +417,7 @@ Response：
 - 要求 `Authorization: Bearer <claim-token>`。
 - UUID token 必須在資料庫中屬於 URL draft ID，且尚未到期。
 - 只允許 `claimed` 草稿；不要嘗試解碼 UUID，它只是資料庫 lookup key。
-- Server 從 Neon 取得 original key，再回 1～5 分鐘 R2 presigned GET redirect。
+- Server 從 Neon 取得 original key，讀取 R2 object 後直接回傳 `image/jpeg`；回應使用 `private, no-store`，瀏覽器不跟隨 R2 redirect。
 - 不接受瀏覽器傳任意 object key。
 - UI 不提供原圖下載，但瀏覽器取得 bytes 後無法以技術手段禁止合法領取者另存；安全要求是其他人與公開 API 都無法取得該 original。
 
@@ -506,6 +508,8 @@ Publish 成功時會清除 claim token，因此不會建立重複照片。若用
 時間值先做 environment/config，經實機使用後再鎖定。
 
 ## 13. 從程式碼到正式上線的操作順序
+
+Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作為重建環境或新裝置時的操作手冊；Gate E 的壓力、安全與 cleanup 證據仍待完成。
 
 ### Gate A：資料與 Server 基礎
 

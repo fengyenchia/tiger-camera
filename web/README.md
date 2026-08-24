@@ -1,40 +1,38 @@
 # Tiger Camera Web
 
-網站是兩個可獨立部署的 Next.js 專案：
+Web 採前後端分離的兩個 Next.js 專案，但仍保存在同一個 pnpm workspace：
 
 ```text
 web/
-├── frontend/   # 頁面、Canvas、Axios 與管理員 UI
-├── backend/    # HTTP API、Neon、R2、驗證與 Cron
-└── docs/       # 功能狀態與後端操作教學
+├── frontend/   # UI、Axios、Canvas、相簿與管理介面
+├── backend/    # Route Handlers、Neon、R2、驗證與 Cron
+├── docs/       # Web 與後端教學
+├── package.json
+├── pnpm-lock.yaml
+└── pnpm-workspace.yaml
 ```
+
+根目錄的 package／lock／workspace 檔是必要的 monorepo 設定；`.next/` 與 `node_modules/` 是可重建產物，不進 Git。
+
+## 正式服務
 
 - Frontend：`https://tiger-camera.fengyenchia.com`
 - Backend：`https://api.tiger-camera.fengyenchia.com`
+- Swagger：`https://api.tiger-camera.fengyenchia.com/api/docs`
 
-正式 Gate C0 程式已完成：Device initiate／complete、6 位碼、UUID claim、私人原圖、完成圖 PUT／publish、公開相簿、Admin JWT、裝置撤銷、永久刪除與 cleanup。尚待使用者建立／設定 Neon、R2、Vercel、DNS 並執行真實雲端 E2E，因此目前不是已部署完成狀態。
+Neon、R2、Vercel、DNS 與實機上傳／領取的功能流程已接通。發布前仍要補跨手機、壓力、裝置撤銷與清理一致性測試。
 
-## 本機開發
+公開 API endpoint 與 `NEXT_PUBLIC_API_BASE_URL` 會進入瀏覽器 bundle，本來就不是秘密。Neon URL、R2 keys、Admin／JWT secrets、device credential 與本機 Postman environment 則由根目錄及本目錄 `.gitignore` 排除。
+
+## 開發
 
 ```powershell
 cd web
 pnpm install
 pnpm dev
-pnpm typecheck
 pnpm lint
+pnpm typecheck
 pnpm build
 ```
 
-- Frontend：`http://localhost:3000`
-- Backend：`http://localhost:3001`
-- Swagger：`http://localhost:3001/api/docs`
-
-Frontend `.env.local`：
-
-```dotenv
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
-```
-
-Backend 依 `backend/.env.example` 建立 `.env.local`。密鑰只放 Backend；Claim 使用資料庫 UUID，不需要 `CLAIM_JWT_SECRET` 或 `CLAIM_CODE_HMAC_SECRET`。
-
-完整外部設定與驗收步驟見 [`docs/backend-setup.md`](docs/backend-setup.md)，最新功能與待辦見 [`docs/README.md`](docs/README.md)。
+環境變數與部署流程見 [`docs/backend-setup.md`](docs/backend-setup.md)，目前功能與待辦見 [`docs/README.md`](docs/README.md)。

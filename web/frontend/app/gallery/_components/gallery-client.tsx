@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { IconPhoto } from "@tabler/icons-react";
 
 import { PhotoCard } from "@/app/gallery/_components/photo-card";
-import { buttonVariants } from "@/components/ui/button";
 import { listPhotos } from "@/api/photos";
 import type { Photo } from "@/api/types";
-import { cn } from "@/lib/utils";
 
 export function GalleryClient() {
   const [photos, setPhotos] = useState<Photo[]>([]);

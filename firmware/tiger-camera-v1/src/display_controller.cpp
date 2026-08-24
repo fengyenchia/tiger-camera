@@ -14,9 +14,9 @@ DisplayController::DisplayController()
 
 void DisplayController::begin() {
   active_ = this;
-  // The tested 128 x 160 module renders native RED as blue with BLACKTAB.
-  // REDTAB keeps the same geometry but selects the panel's required BGR order.
-  tft_.initR(INITR_REDTAB);
+  // The tested 1.44-inch ST7735 is a 128 x 128 green-tab panel. This option
+  // sets the correct square geometry, BGR order, and active-area offset.
+  tft_.initR(INITR_144GREENTAB);
   // Keep the tested upright text orientation. JPEG orientation is handled
   // independently so display messages do not rotate with the photo.
   tft_.setRotation(0);
@@ -64,8 +64,8 @@ bool DisplayController::drawJpeg(const uint8_t* data, size_t length) {
 
   // Keep the JPEG orientation. Choose the largest decoder scale whose output
   // is still at least as tall as the panel, then downsample while drawing.
-  // Decoding XGA directly to 128 x 96 and enlarging it to 128 x 160 made the
-  // preview visibly soft; XGA now decodes to 256 x 192 before the final resize.
+  // Decode XGA to 256 x 192 before the final resize, then centre-crop it to a
+  // square. Decoding directly to 128 x 96 made the preview visibly soft.
   uint8_t scale = 1;
   while (scale < 8 &&
          imageHeight >=
@@ -150,7 +150,7 @@ bool DisplayController::jpegBlock(int16_t x, int16_t y, uint16_t width,
         continue;
       }
 
-      // Scale the center-cropped 96 x 120 image to the full 128 x 160 panel.
+      // Scale the centre-cropped square image to the full 128 x 128 panel.
       const int16_t croppedX = sourceX - active_->jpegCropX_;
       const int16_t destinationXStart =
           croppedX * targetWidth / active_->jpegCropWidth_;

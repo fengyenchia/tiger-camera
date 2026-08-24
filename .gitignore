@@ -1,3 +1,28 @@
+# Local environment files anywhere in the repository
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.development
+**/.env.production
+**/.env.test
+!**/.env.example
+
+# Private keys and certificates
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.crt
+**/*.cer
+
+# Local API clients and provisioning exports
+**/*.postman_environment.json
+**/postman/*.environment.json
+firmware/**/include/credentials.h
+firmware/**/data/device.json
+firmware/**/data/provisioning.json
+firmware/**/*.nvs.bin
+
 # PlatformIO build output and editor state
 firmware/**/.pio/
 firmware/**/.vscode/
@@ -5,4 +30,3 @@ firmware/**/.vscode/
 # Device-local network and API credentials
 firmware/**/include/secrets.h
 firmware/**/secrets.h
-

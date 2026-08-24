@@ -36,11 +36,11 @@ constexpr char ntpServerSecondary[] = "time.google.com";
 // driver's documented range and can be tuned after comparing the original JPEG
 // (not only the TFT preview) under the intended lighting.
 constexpr int sensorBrightness = 1;   // -2 to 2
-constexpr int sensorContrast = 0;     // -2 to 2
+constexpr int sensorContrast = -1;     // -2 to 2
 constexpr int sensorSaturation = 0;   // -2 to 2
 constexpr int sensorAutoExposureLevel = 2;  // -2 to 2
 constexpr int sensorAdvancedExposure = 0;
-constexpr gainceiling_t sensorGainCeiling = GAINCEILING_4X;
+constexpr gainceiling_t sensorGainCeiling = GAINCEILING_8X; // 從 4X 改為 8X 或 16X
 
 // Compensate the visible active-area offset of the tested ST7735 module.
 constexpr int displayTextOffsetX = 3;
