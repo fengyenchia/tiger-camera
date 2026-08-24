@@ -6,6 +6,23 @@
 #include "app_config.h"
 #include "board_pins.h"
 
+namespace DisplayLayout {
+
+// 啟動畫面：品牌內容整組往上移一點。
+constexpr int16_t kSplashTitleY = 56;
+constexpr int16_t kSplashAuthorY = 86;
+
+// 一般狀態頁：標題與說明一起往下移一點。
+constexpr int16_t kStatusHeadingOffsetY = -8;
+constexpr int16_t kStatusDetailOffsetY = 16;
+
+// 領取碼頁的固定垂直位置。
+constexpr int16_t kClaimLabelY = 30;
+constexpr int16_t kClaimCodeY = 64;
+constexpr int16_t kClaimExpiryY = 97;
+
+}  // namespace DisplayLayout
+
 DisplayController* DisplayController::active_ = nullptr;
 
 DisplayController::DisplayController()
@@ -95,32 +112,45 @@ bool DisplayController::drawJpeg(const uint8_t* data, size_t length) {
   return decoded;
 }
 
+// 顯示一般狀態：短標題使用大字，較長標題使用中號字，避免超出 128px 寬度。
 void DisplayController::showStatus(const char* heading, const char* detail) {
   tft_.fillScreen(ST77XX_BLACK);
-  const uint8_t headingSize = strlen(heading) <= 10 ? 2 : 1;
-  const int16_t headingY = detail == nullptr ? tft_.height() / 2
-                                              : tft_.height() / 2 - 12;
+  const DisplayTextSize headingSize = strlen(heading) <= 7
+                                          ? DisplayTextSize::Large
+                                          : DisplayTextSize::Medium;
+  const int16_t headingY = tft_.height() / 2 +
+                           (detail == nullptr ? 0
+                                               : DisplayLayout::kStatusHeadingOffsetY);
+
   drawCenteredText(heading, headingSize, headingY, ST77XX_YELLOW);
 
   if (detail != nullptr) {
-    drawCenteredText(detail, 1, tft_.height() / 2 + 12, ST77XX_WHITE);
+    drawCenteredText(detail, DisplayTextSize::Small,
+                     tft_.height() / 2 + DisplayLayout::kStatusDetailOffsetY,
+                     ST77XX_WHITE);
   }
 }
 
+// 顯示領取碼：領取碼使用大字，其他提示使用小字。
 void DisplayController::showClaimCode(const char* code) {
   tft_.fillScreen(ST77XX_BLACK);
-  drawCenteredText("CLAIM CODE", 1, 45, ST77XX_WHITE);
-  drawCenteredText(code, 3, 78, ST77XX_YELLOW);
-  drawCenteredText("VALID 24H", 1, 112, ST77XX_WHITE);
+
+  // 文字位置配合 128x128 螢幕，並保留右上／左下微調設定。
+  drawCenteredText("CLAIM CODE", DisplayTextSize::Small,
+                   DisplayLayout::kClaimLabelY, ST77XX_WHITE);
+  drawCenteredText(code, DisplayTextSize::Large, DisplayLayout::kClaimCodeY,
+                   ST77XX_YELLOW);
+  drawCenteredText("VALID 24H", DisplayTextSize::Small,
+                   DisplayLayout::kClaimExpiryY, ST77XX_WHITE);
 }
 
-void DisplayController::drawCenteredText(const char* text, uint8_t size,
+void DisplayController::drawCenteredText(const char* text, DisplayTextSize size,
                                          int16_t centerY, uint16_t color) {
   int16_t boundsX = 0;
   int16_t boundsY = 0;
   uint16_t boundsWidth = 0;
   uint16_t boundsHeight = 0;
-  tft_.setTextSize(size);
+  tft_.setTextSize(static_cast<uint8_t>(size));
   tft_.setTextColor(color);
   tft_.getTextBounds(text, 0, 0, &boundsX, &boundsY, &boundsWidth,
                      &boundsHeight);
@@ -130,6 +160,60 @@ void DisplayController::drawCenteredText(const char* text, uint8_t size,
                           AppConfig::displayTextOffsetY;
   tft_.setCursor(cursorX, cursorY);
   tft_.print(text);
+}
+
+
+// 啟動畫面：品牌標題與作者。
+void DisplayController::showSplashPage(const char* title, const char* author) {
+  tft_.fillScreen(ST77XX_BLACK);
+
+  // 標題使用中號字，作者使用小號字。
+  drawCenteredText(title, DisplayTextSize::Medium,
+                   DisplayLayout::kSplashTitleY, ST77XX_YELLOW);
+  if (author != nullptr) {
+    drawCenteredText(author, DisplayTextSize::Small,
+                     DisplayLayout::kSplashAuthorY, ST77XX_WHITE);
+  }
+}
+
+// 開機日誌頁：固定標題、分隔線、日誌區與進度條。
+static int currentLogY = 40;
+
+void DisplayController::showBootLogPage() {
+  tft_.fillScreen(ST77XX_BLACK);
+  currentLogY = 40;
+
+  // 頂部標題。
+  drawCenteredText("BOOTING", DisplayTextSize::Medium, 18, ST77XX_CYAN);
+
+  // 標題與日誌區的分隔線。
+  tft_.drawFastHLine(10, 28, 108, ST77XX_WHITE);
+
+  // 底部進度條外框。
+  tft_.drawRect(10, 112, 108, 8, ST77XX_WHITE);
+}
+
+// 顯示一行開機日誌，並更新底部進度條。
+void DisplayController::appendBootLog(const char* label, const char* status, int percent) {
+  tft_.setTextSize(static_cast<uint8_t>(DisplayTextSize::Small));
+  tft_.setTextColor(ST77XX_WHITE);
+  tft_.setCursor(10, currentLogY);
+  tft_.print("> ");
+  tft_.print(label);
+
+  // 狀態文字使用黃色區分。
+  tft_.setCursor(95, currentLogY);
+  tft_.setTextColor(ST77XX_YELLOW);
+  tft_.print(status);
+
+  // 每行日誌間隔 16px。
+  currentLogY += 16;
+
+  // 依百分比填滿進度條。
+  const int fillWidth = (percent * 104) / 100;
+  if (fillWidth > 0) {
+    tft_.fillRect(12, 114, fillWidth, 4, ST77XX_YELLOW);
+  }
 }
 
 bool DisplayController::jpegBlock(int16_t x, int16_t y, uint16_t width,

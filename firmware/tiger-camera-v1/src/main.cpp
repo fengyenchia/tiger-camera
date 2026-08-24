@@ -248,54 +248,79 @@ void drawLivePreview() {
 
 void setup() {
   Serial.begin(115200);
-  
+
   // 等待 USB 串口連線成功（最多等 3 秒避免卡死）
   unsigned long start = millis();
   while (!Serial && (millis() - start < 3000)) {
-      delay(10);
+    delay(10);
   }
-  
+
   Serial.println("ESP32-S3 Camera Booting...");
-    
-  // Serial is native USB CDC on the OTG connector; Serial0 is UART0 on the
-  // board's CH340/TTL connector. Mirror diagnostics to both during Gate H1.
+
   Serial0.begin(115200);
   delay(800);
 
   display.begin();
+
+  // ─── 頁面 1: 四色色塊測試（停留 1 秒）───
   display.showColorTest();
   delay(1000);
-  display.showStatus("TIGER CAMERA", "Gate H1");
-  printMemoryReport();
-  delay(1000);
 
+  // ─── 頁面 2: 品牌主視覺（停留 2.0 秒）───
+  display.showSplashPage("TIGER CAM", "by Yen-Chia Feng");
+  delay(2000);
+
+  // ─── 頁面 3: 終端機 Log 與逐項初始化 ───
+  display.showBootLogPage();
+  delay(400);
+
+  // 1. PSRAM 檢測
   if (!psramFound() || ESP.getPsramSize() == 0) {
+    display.appendBootLog("PSRAM", "FAIL", 25);
+    delay(1500);
     display.showStatus("PSRAM ERROR", "not detected");
-    delay(1000);
     enterState(CameraState::error);
     return;
   }
+  display.appendBootLog("PSRAM", "OK", 25);
+  printMemoryReport();
+  delay(600);
+
+  // 2. 緩衝區初始化
   if (!latestPhoto.begin()) {
+    display.appendBootLog("BUFFER", "FAIL", 50);
+    delay(1500);
     display.showStatus("MUTEX ERROR");
-    delay(1000);
     enterState(CameraState::error);
     return;
   }
+  display.appendBootLog("BUFFER", "OK", 50);
+  delay(600);
+
+  // 3. 網路與上傳管理器
   network.begin();
   if (!uploader.begin(&network)) {
     Serial.println("[upload] background task unavailable; camera remains local-only");
     Serial0.println("[upload] background task unavailable; camera remains local-only");
   }
+  display.appendBootLog("NETWORK", "OK", 75);
+  delay(600);
+
+  // 4. OV2640 相機模組
   if (!camera.begin()) {
+    display.appendBootLog("CAMERA", "FAIL", 100);
+    delay(1500);
     display.showStatus("CAMERA ERROR", "init failed");
-    delay(1000);
     enterState(CameraState::error);
     return;
   }
+  display.appendBootLog("CAMERA", "OK", 100);
+  delay(1000);
 
+  // ─── 完成並提示拍照 ───
   shutter.begin();
   display.showStatus("READY", "press shutter");
-  delay(1500);
+  delay(1800);
   shutter.discardPending();
   enterState(CameraState::liveView);
 }

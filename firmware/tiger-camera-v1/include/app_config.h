@@ -43,7 +43,7 @@ constexpr int sensorAdvancedExposure = 0;
 constexpr gainceiling_t sensorGainCeiling = GAINCEILING_8X; // 從 4X 改為 8X 或 16X
 
 // Compensate the visible active-area offset of the tested ST7735 module.
-constexpr int displayTextOffsetX = 3;
+constexpr int displayTextOffsetX = 0;
 constexpr int displayTextOffsetY = -3;
 constexpr bool displayInverted = false;
 
