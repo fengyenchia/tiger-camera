@@ -17,7 +17,7 @@
 NEXT_PUBLIC_API_BASE_URL=https://api.tiger-camera.fengyenchia.com/api
 ```
 
-這是唯一可公開的 URL。R2、Neon、JWT signing secret、Admin password hash 與 device credential 不得放在 Frontend。
+這是唯一可公開的 URL。R2、Neon、JWT signing secret、Admin password hash 與 `DEVICE_UPLOAD_TOKEN` 不得放在 Frontend；管理頁也不提供裝置 token 的建立或顯示功能。
 
 ## Token
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createClaimCode } from "@/lib/server/claim-code";
-import { requireDevice } from "@/lib/server/device-auth";
+import { requireDeviceUploadToken } from "@/lib/server/device-auth";
 import { getDeviceDraft, isUniqueViolation, markDraftReady } from "@/lib/server/drafts";
 import { headObject } from "@/lib/server/r2";
 import { ApiError, handleRouteError, isUuid } from "@/lib/server/validation";
@@ -19,7 +19,7 @@ export const runtime = "nodejs";
  *       - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
  *     responses:
  *       200: { description: 草稿已可領取 }
- *       401: { description: Device credential 無效 }
+ *       401: { description: DEVICE_UPLOAD_TOKEN 無效 }
  *       409: { description: 上傳尚未完成或狀態不允許 }
  */
 export async function POST(
@@ -29,8 +29,8 @@ export async function POST(
   try {
     const { id } = await context.params;
     if (!isUuid(id)) throw new ApiError("DRAFT_NOT_FOUND", 404);
-    const device = await requireDevice(request);
-    let draft = await getDeviceDraft(id, device.id);
+    requireDeviceUploadToken(request);
+    let draft = await getDeviceDraft(id);
     if (draft.status === "ready" && draft.claimCode && draft.claimExpiresAt) {
       return NextResponse.json({
         draftId: draft.id,
@@ -55,7 +55,7 @@ export async function POST(
     const claimExpiresAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
     for (let attempt = 0; attempt < 8; attempt += 1) {
       try {
-        const ready = await markDraftReady(id, device.id, createClaimCode(), claimExpiresAt);
+        const ready = await markDraftReady(id, createClaimCode(), claimExpiresAt);
         if (ready) {
           return NextResponse.json({
             draftId: ready.id,
@@ -64,7 +64,7 @@ export async function POST(
             claimExpiresAt: ready.claimExpiresAt,
           });
         }
-        draft = await getDeviceDraft(id, device.id);
+        draft = await getDeviceDraft(id);
         if (draft.status === "ready" && draft.claimCode && draft.claimExpiresAt) {
           return NextResponse.json({
             draftId: draft.id,
@@ -83,4 +83,3 @@ export async function POST(
     return handleRouteError(error);
   }
 }
-

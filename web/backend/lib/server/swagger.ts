@@ -13,7 +13,7 @@ export function getApiDocs() {
         title: "Tiger Camera API",
         version: "1.0.0",
         description:
-          "Tiger Camera V1 Backend API：Neon metadata、私人 R2 草稿、裝置上傳、照片領取、完成圖發布、公開相簿與管理員永久刪除。",
+          "Tiger Camera V1 Backend API：Neon metadata、私人 R2 草稿、固定 token 相機上傳、照片領取、完成圖發布、公開相簿與管理員永久刪除。",
       },
       servers: [
         {
@@ -27,7 +27,7 @@ export function getApiDocs() {
         { name: "Device", description: "ESP32 私人草稿上傳" },
         { name: "Drafts", description: "照片領取、私人讀取與發布" },
         { name: "Photos", description: "公開完成圖" },
-        { name: "Admin", description: "管理員登入、裝置與永久刪除" },
+        { name: "Admin", description: "管理員登入與永久刪除" },
         { name: "Maintenance", description: "受 CRON_SECRET 保護的清理工作" },
       ],
       components: {
@@ -35,7 +35,7 @@ export function getApiDocs() {
           DeviceAuth: {
             type: "http",
             scheme: "bearer",
-            description: "ESP32 使用的可撤銷 device-scoped credential",
+            description: "ESP32 與 Backend environment 共用的固定高熵 DEVICE_UPLOAD_TOKEN",
           },
           ClaimAuth: {
             type: "http",

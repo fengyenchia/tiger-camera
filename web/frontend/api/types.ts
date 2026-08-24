@@ -43,11 +43,3 @@ export type UploadInstruction = {
   };
   expiresAt: string;
 };
-
-export type AdminDevice = {
-  id: string;
-  name: string;
-  status: "active" | "revoked";
-  createdAt: string;
-  lastSeenAt: string | null;
-};

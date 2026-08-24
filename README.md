@@ -36,7 +36,7 @@ Tiger Camera 是以 AroundTW／GOOUUU ESP32-S3-CAM（ESP32-S3-WROOM-1-N16R8、OV
 - 原始 JPEG 只作為私人暫存草稿；發布成功或逾期後刪除。
 - 永久保存的是手機後製完成圖，公開與否由領取者決定。
 - 公開相簿所有人可看，只有管理員能永久刪除。
-- ESP32 只保存一次設定、可撤銷的裝置上傳憑證，不保存 R2、Neon 或管理員密鑰；連上 Wi-Fi 不等於通過 Backend 驗證。
+- ESP32 只保存 Wi-Fi 與固定高熵 `DEVICE_UPLOAD_TOKEN`，不保存 R2、Neon 或管理員密鑰；連上 Wi-Fi 不等於通過 Backend 驗證。Token 只存在 Backend environment 與被 Git 忽略的韌體 `secrets.h`。
 - Wi-Fi 失敗不能讓基本拍照功能失效。
 - V1 不做 GIF、錄影、公開註冊、藍牙傳圖、AI 濾鏡或社群自動上傳。
 

@@ -34,9 +34,3 @@ export type InitiateDraftInput = {
   originalSize: number;
   width: number;
 };
-
-export type Device = {
-  id: string;
-  name: string;
-  status: "active" | "revoked";
-};

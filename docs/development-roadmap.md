@@ -63,7 +63,7 @@ P0 通過條件：上傳峰值時 5V 軌不造成 brownout，模組與電池無�
 
 - iPhone Safari 跑一次 W0／I0 完整流程。
 - 30 次完整拍照上傳、5 次 Wi-Fi 中斷恢復。
-- 撤銷裝置憑證後舊憑證不得建立草稿。
+- 輪替 `DEVICE_UPLOAD_TOKEN` 後，舊 token 不得建立或完成草稿。
 - 草稿逾期、發布與刪除後，Neon/R2 狀態一致且私人原圖被清除。
 - 對外只保留必要 CORS origin，秘密不進入瀏覽器、韌體或 Git。
 - Web lint、typecheck、測試與 production build 通過。

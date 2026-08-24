@@ -20,7 +20,6 @@ export type DraftRow = {
   claimExpiresAt: string | null;
   claimToken: string | null;
   claimTokenExpiresAt: string | null;
-  deviceId: string;
   height: number | null;
   id: string;
   originalKey: string | null;
@@ -33,7 +32,6 @@ export type DraftRow = {
 
 const draftColumns = `
   id,
-  device_id AS "deviceId",
   status,
   original_key AS "originalKey",
   processed_key AS "processedKey",
@@ -47,20 +45,19 @@ const draftColumns = `
   original_size AS "originalSize",
   processed_size AS "processedSize"`;
 
-export async function createOrGetUploadingDraft(deviceId: string, input: InitiateDraftInput) {
+export async function createOrGetUploadingDraft(input: InitiateDraftInput) {
   const id = randomUUID();
   const key = originalObjectKey(id);
   const rows = await query<DraftRow>(
     `INSERT INTO photos (
-       id, device_id, client_request_id, original_key, status, captured_at,
+       id, client_request_id, original_key, status, captured_at,
        mime_type, width, height, original_size
-     ) VALUES ($1, $2, $3, $4, 'uploading', $5, 'image/jpeg', $6, $7, $8)
-     ON CONFLICT (device_id, client_request_id)
+     ) VALUES ($1, $2, $3, 'uploading', $4, 'image/jpeg', $5, $6, $7)
+     ON CONFLICT (client_request_id)
      DO UPDATE SET client_request_id = EXCLUDED.client_request_id
      RETURNING ${draftColumns}`,
     [
       id,
-      deviceId,
       input.clientRequestId,
       key,
       input.capturedAt,
@@ -75,10 +72,10 @@ export async function createOrGetUploadingDraft(deviceId: string, input: Initiat
   return draft;
 }
 
-export async function getDeviceDraft(id: string, deviceId: string) {
+export async function getDeviceDraft(id: string) {
   const rows = await query<DraftRow>(
-    `SELECT ${draftColumns} FROM photos WHERE id = $1 AND device_id = $2 LIMIT 1`,
-    [id, deviceId],
+    `SELECT ${draftColumns} FROM photos WHERE id = $1 LIMIT 1`,
+    [id],
   );
   const draft = rows[0];
   if (!draft) throw new ApiError("DRAFT_NOT_FOUND", 404);
@@ -87,16 +84,15 @@ export async function getDeviceDraft(id: string, deviceId: string) {
 
 export async function markDraftReady(
   id: string,
-  deviceId: string,
   claimCode: string,
   claimExpiresAt: string,
 ) {
   const rows = await query<DraftRow>(
     `UPDATE photos
-        SET status = 'ready', claim_code = $3, claim_expires_at = $4, completed_at = now()
-      WHERE id = $1 AND device_id = $2 AND status = 'uploading'
+        SET status = 'ready', claim_code = $2, claim_expires_at = $3, completed_at = now()
+      WHERE id = $1 AND status = 'uploading'
       RETURNING ${draftColumns}`,
-    [id, deviceId, claimCode, claimExpiresAt],
+    [id, claimCode, claimExpiresAt],
   );
   return rows[0] ?? null;
 }
@@ -116,7 +112,6 @@ export async function claimDraftByCode(code: string, token: string, tokenExpires
       WHERE photo.id = candidate.id AND photo.status = 'ready'
       RETURNING
         photo.id,
-        photo.device_id AS "deviceId",
         photo.status,
         photo.original_key AS "originalKey",
         photo.processed_key AS "processedKey",

@@ -23,7 +23,7 @@
 | ID | 測試 | 通過條件 | 狀態 |
 | --- | --- | --- | --- |
 | L-01 | 2.4 GHz Wi-Fi | 裝置連線並取得時間 | 已通過 |
-| L-02 | Device initiate | 取得限定路徑與短效期限的 R2 PUT URL | 已通過 |
+| L-02 | 固定 token initiate | 取得限定路徑與短效期限的 R2 PUT URL | 已通過（舊 credential 流程）；固定 token 切換後需 smoke test |
 | L-03 | PUT／complete | Backend 確認物件後才建立可領取草稿 | 已通過 |
 | L-04 | 領取碼 | TFT 與 Serial 同一組 6 位碼 | 已通過 |
 | L-05 | Claim | 首次領取取得資料庫 opaque UUID Bearer token；代碼失效 | 已通過 |
@@ -36,7 +36,7 @@ Gate L0 的功能流程通過。以下屬 R0 發布前強化，不宣稱已測�
 
 - [ ] 30 次完整拍照→上傳→complete，無重複草稿或 size mismatch。
 - [ ] 5 次上傳中斷線→恢復，不阻塞拍照，重試保持 idempotent。
-- [ ] 撤銷 device credential 後，舊憑證立即失效。
+- [ ] 輪替 `DEVICE_UPLOAD_TOKEN` 後，舊 token 立即收到 `401`，新 token 可完成 initiate／complete。
 - [ ] 斷線期間的新拍攝能取代尚未送出的舊 snapshot，不誤顯示舊碼。
 
 ## W0：Web 與權限

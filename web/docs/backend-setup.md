@@ -12,13 +12,13 @@
 - 使用者輸入領取碼，在自己的手機後製、下載完成圖或選擇公開；原圖不提供下載。
 - 公開相簿所有人可看；只有管理員可永久刪除任意照片。
 
-> 2026-08-24 狀態：正式 Neon、R2、Frontend／Backend Vercel 與自訂網域已設定；Postman API 測試與 ESP32 實機 `initiate → R2 PUT → complete → claim → Canvas` 功能流程已跑通。發布前仍要補跨手機、量化斷線／壓力、裝置撤銷與 cleanup 一致性驗收。
+> 2026-08-24 狀態：正式 Neon、R2、Frontend／Backend Vercel 與自訂網域已設定；Postman API 測試與 ESP32 實機 `initiate → R2 PUT → complete → claim → Canvas` 功能流程已跑通。相機驗證已簡化為固定 `DEVICE_UPLOAD_TOKEN`，發布前仍要補跨手機、量化斷線／壓力、token 輪替與 cleanup 一致性驗收。
 
 ### 目前程式碼快照（2026-08-24）
 
 - Frontend 與 Backend 已拆成兩個 Next.js 專案，以 `web/pnpm-workspace.yaml` 管理。
 - Frontend 已完成 `/`、`/create`、`/gallery` 與 Axios 呼叫層。
-- Backend 已完成 Device initiate／complete、Claim、私人原圖、processed PUT／publish、公開照片、Admin 與 Cleanup Route Handlers。
+- Backend 已完成固定 upload token initiate／complete、Claim、私人原圖、processed PUT／publish、公開照片、Admin 與 Cleanup Route Handlers。
 - Backend 已完成 `/api/docs` Swagger UI 與 `/api/openapi`；只列出實際存在的 endpoints。
 - `/create` 的拍攝時間由 API `capturedAt` 自動帶入；使用者只選擇是否顯示，不提供日期時間選擇器。
 - Frontend 已完成正式 presigned PUT／publish、公開後跳轉相簿、相簿大圖 Dialog 與 `/admin`。
@@ -29,13 +29,13 @@
 
 | 身份 | 憑證 | 保存位置 | 權限 |
 |---|---|---|---|
-| ESP32 裝置 | 高熵 opaque device credential | ESP32 NVS／韌體 secrets | 只能建立與完成私人原圖草稿 |
+| ESP32 裝置 | 固定高熵 `DEVICE_UPLOAD_TOKEN` | Backend environment＋韌體 secrets | 只能建立與完成私人原圖草稿 |
 | 照片領取者 | 6 位配對碼換來的 opaque UUID token | 使用者手機記憶體或 sessionStorage | 只能讀取、後製與發布同一張草稿 |
-| 管理員 | 短效 Admin JWT | 使用者指定的 localStorage＋Axios Bearer | 管理裝置、清理草稿、永久刪除 |
+| 管理員 | 短效 Admin JWT | 使用者指定的 localStorage＋Axios Bearer | 登入管理頁、永久刪除公開照片 |
 
 禁止事項：
 
-> 單一裝置只需初次建立並保存一次 credential，不是每次拍照前都要取得。Wi-Fi 只提供連線，無法驗證公開 API 的呼叫者；因此不能因為只有一台相機就移除 Device Bearer。若未來隱藏管理頁的裝置建立 UI，仍需保留現有 credential 或改用 Backend environment＋韌體共用的固定高熵 upload token。
+> 單一裝置使用一組固定 upload token，不再由管理頁建立 device。Wi-Fi 只提供連線，無法驗證公開 API 的呼叫者；因此仍要送 `Authorization: Bearer <DEVICE_UPLOAD_TOKEN>`，不能改成匿名上傳。需要撤銷時，同步輪替 Backend 與韌體的值。
 
 - ESP32 不保存 Admin JWT、R2 Access Key、Neon connection string 或管理員 JWT signing secret。
 - 領取碼只負責把人帶到某張照片，不視為安全密碼；猜到別人的碼是已接受的產品取捨。
@@ -52,7 +52,7 @@ sequenceDiagram
     participant DB as Neon
     participant U as User Browser
 
-    C->>API: POST /api/device/drafts/initiate + Device credential
+    C->>API: POST /api/device/drafts/initiate + DEVICE_UPLOAD_TOKEN
     API->>DB: INSERT status=uploading
     API-->>C: original presigned PUT URL
     C->>R2: PUT original JPEG
@@ -121,7 +121,7 @@ R2 CORS 只需要 hosted browser 上傳 processed JPEG；ESP32 的 original PUT 
 
 ### 4.2 建立正式 schema
 
-正式 migration 已存在 `web/backend/lib/server/migrations/001_devices_and_photos.sql`。請以該檔案為唯一正式版本，將完整內容複製到 Neon SQL Editor 執行。下方為同版本參考：
+正式 migration 位於 `web/backend/lib/server/migrations/`。全新資料庫依序執行 `001_devices_and_photos.sql`、`002_fixed_device_upload_token.sql`；既有正式 Neon 已跑過 001，只需再執行 002。先跑 002、再部署新版 Backend，舊 Backend 在過渡期間仍可使用，因此不會有 schema 切換空窗。下方先保留 001 的基礎 schema 參考：
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -196,6 +196,29 @@ CREATE INDEX photos_original_cleanup_idx
   WHERE status = 'active' AND original_key IS NOT NULL;
 ```
 
+接著執行 002：
+
+```sql
+ALTER TABLE photos
+  ALTER COLUMN device_id DROP NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint
+     WHERE conname = 'photos_client_request_id_key'
+       AND conrelid = 'photos'::regclass
+  ) THEN
+    ALTER TABLE photos
+      ADD CONSTRAINT photos_client_request_id_key UNIQUE (client_request_id);
+  END IF;
+END
+$$;
+```
+
+002 不刪除既有 `devices` rows 或歷史 `photo.device_id`，但新版程式不再讀寫它們。這是為了避免破壞既有照片；管理 devices 的 Frontend 與 Admin routes 已移除。新草稿以全域 `client_request_id` 保證 idempotency。
+
 配對碼本來就以明碼保存，因為它不是安全憑證。`ready → claimed` 時將 `claim_code` 設為 null，UUID token 到期或發布後也設為 null；不要把它們寫進 log。
 
 ## 5. 安裝套件
@@ -220,6 +243,7 @@ R2_REGION=auto
 ADMIN_JWT_SECRET=至少_32_bytes_亂數
 ADMIN_USERNAME=你的管理員帳號
 ADMIN_PASSWORD_HASH=\$2b\$12\$your_bcrypt_hash
+DEVICE_UPLOAD_TOKEN=至少_32_bytes_固定高熵亂數
 CRON_SECRET=另一組長亂數
 FRONTEND_ORIGIN=http://localhost:3000,https://tiger-camera.fengyenchia.com
 API_PUBLIC_URL=http://localhost:3001
@@ -227,7 +251,9 @@ API_PUBLIC_URL=http://localhost:3001
 
 這些都不能加 `NEXT_PUBLIC_`。Vercel Production／Preview／Development 要分開設定；更新後重新部署。
 
-不需要 `CLAIM_JWT_SECRET` 或 `CLAIM_CODE_HMAC_SECRET`。執行 `cd web/backend` 後使用 `pnpm admin:hash-password` 產生 bcrypt 雜湊；腳本會同時顯示兩種可複製格式。在本機 `.env.local` 中，bcrypt 的每個 `$` 都要寫成 `\$`，因為 Next.js 會對 env 檔做變數展開；只加引號不能解決。在 Vercel Dashboard 的 Environment Variable Value 則填原始 `$2b$...` hash，不加反斜線。`ADMIN_JWT_SECRET` 與 `CRON_SECRET` 使用密碼管理器或系統安全亂數產生，不能直接填範例文字。
+不需要 `CLAIM_JWT_SECRET` 或 `CLAIM_CODE_HMAC_SECRET`。`DEVICE_UPLOAD_TOKEN` 至少 32 bytes，Vercel Backend 與本機 `web/backend/.env.local` 都填同一值；韌體 `secrets.h` 的既有 `deviceCredential` 欄位也填同一值。它不是 `NEXT_PUBLIC_`，不得放到 Frontend、畫面、Serial 或 Git。需要輪替時先更新 Backend，再更新並重燒韌體，最後驗證舊值收到 `401`。
+
+執行 `cd web/backend` 後使用 `pnpm admin:hash-password` 產生 bcrypt 雜湊；腳本會同時顯示兩種可複製格式。在本機 `.env.local` 中，bcrypt 的每個 `$` 都要寫成 `\$`，因為 Next.js 會對 env 檔做變數展開；只加引號不能解決。在 Vercel Dashboard 的 Environment Variable Value 則填原始 `$2b$...` hash，不加反斜線。`ADMIN_JWT_SECRET` 與 `CRON_SECRET` 使用密碼管理器或系統安全亂數產生，不能直接填範例文字。
 
 正式 Backend 的 `API_PUBLIC_URL` 設為 `https://api.tiger-camera.fengyenchia.com`，Frontend 的 `NEXT_PUBLIC_API_BASE_URL` 設為 `https://api.tiger-camera.fengyenchia.com/api`。
 
@@ -242,7 +268,7 @@ API_PUBLIC_URL=http://localhost:3001
 - `GET /api/docs`：Swagger UI。
 - `GET /api/openapi`：原始 OpenAPI JSON。
 
-新增或修改已實作 Route Handler 時，必須同步更新同檔案的 `@swagger` 區塊。尚未實作的 API 只留在本規劃文件，不提前加入 Swagger，避免使用者誤以為可以呼叫。Swagger security schemes 可描述 Device、Claim、Admin Bearer 格式，但絕不能包含真實 token 或 secrets。
+新增或修改已實作 Route Handler 時，必須同步更新同檔案的 `@swagger` 區塊。尚未實作的 API 只留在本規劃文件，不提前加入 Swagger，避免使用者誤以為可以呼叫。Swagger security schemes 可描述固定 Device upload token、Claim、Admin Bearer 格式，但絕不能包含真實 token 或 secrets。
 
 ## 7. Server-only 模組
 
@@ -262,7 +288,7 @@ web/backend/lib/server/
 
 所有檔案先 `import "server-only"`。`web/frontend/api/` 是瀏覽器 Axios layer；`web/backend/app/api/` 才會產生 HTTP endpoint。Frontend 不得 import Backend 的 server-only 檔案。
 
-Backend 另以 `web/backend/proxy.ts` 處理 `/api/*` CORS：只允許 `FRONTEND_ORIGIN` 白名單，preflight 接受 `Authorization` 與 `Content-Type`。ESP32 不是瀏覽器，不受 CORS 當作身分驗證；它仍必須提供 device credential。
+Backend 另以 `web/backend/proxy.ts` 處理 `/api/*` CORS：只允許 `FRONTEND_ORIGIN` 白名單，preflight 接受 `Authorization` 與 `Content-Type`。ESP32 不是瀏覽器，不受 CORS 當作身分驗證；它仍必須提供固定 `DEVICE_UPLOAD_TOKEN`。
 
 ### 7.1 R2 client
 
@@ -318,14 +344,14 @@ export function createClaimToken() {
 
 Admin JWT 是另一套真正的管理員驗證，仍使用 secret、audience `tiger-camera-admin` 與 `role=admin`，依既定決策存 localStorage 並由 Axios interceptor 主動附加。
 
-## 8. Device API
+## 8. 相機上傳 API
 
 ### 8.1 `POST /api/device/drafts/initiate`
 
 Header：
 
 ```http
-Authorization: Bearer <device-credential>
+Authorization: Bearer <DEVICE_UPLOAD_TOKEN>
 Content-Type: application/json
 ```
 
@@ -344,9 +370,9 @@ Body：
 
 Server：
 
-1. hash credential 並查找 `devices.status = active`。
+1. 以 constant-time 比對 Bearer token 與 Backend `DEVICE_UPLOAD_TOKEN`。
 2. 驗證 UUID、時間、JPEG、大小、尺寸與最大像素。
-3. 以 `(device_id, client_request_id)` 保證 idempotency。
+3. 以全域唯一 `client_request_id` 保證單一相機的 idempotency。
 4. 建立 `uploading` 與 Server-controlled original key。
 5. 回傳五分鐘 presigned PUT URL。
 
@@ -366,7 +392,7 @@ Response `201`：
 
 ### 8.2 `POST /api/device/drafts/:id/complete`
 
-1. 再次驗證 device credential，確認 draft 屬於此 device。
+1. 再次以 constant-time 驗證固定 `DEVICE_UPLOAD_TOKEN`。
 2. 對 original key 執行 `HeadObject`。
 3. 驗證 MIME 與實際大小。
 4. 產生 6 位 code，以明碼保存到 UNIQUE `claim_code`，並把 `claim_expires_at` 設為 24 小時後。
@@ -511,7 +537,7 @@ Publish 成功時會清除 claim token，因此不會建立重複照片。若用
 
 ## 13. 從程式碼到正式上線的操作順序
 
-Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作為重建環境或新裝置時的操作手冊；Gate E 的壓力、安全與 cleanup 證據仍待完成。
+Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作為重建環境或輪替 token 時的操作手冊；Gate E 的壓力、安全與 cleanup 證據仍待完成。
 
 ### Gate A：資料與 Server 基礎
 
@@ -519,12 +545,13 @@ Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作
 2. 建立 R2 private bucket、Object Read & Write token 與 CORS。
 3. 填入 Backend `.env.local` 後，以測試 JPEG 驗證 presigned PUT、HeadObject、GET、DELETE。
 
-### Gate B：裝置生命週期
+### Gate B：固定相機 token
 
-1. 執行 `pnpm admin:hash-password`，設定 Admin 環境變數並從 `/admin` 登入。
-2. 初次安裝才從 `/admin` 建立一筆 device；credential 只顯示一次，立即保存到韌體 secrets。現有相機已完成後不需重做。
-3. 用 Postman 或固定 JPEG 模擬 ESP32 完成 `initiate → PUT → complete`。
-4. 驗證同一 `clientRequestId` 不重複。
+1. 產生至少 32 bytes 的固定高熵 token，不要貼到文件或 Git。
+2. 將同一值設定為 Backend `DEVICE_UPLOAD_TOKEN`，並填入韌體私有 `secrets.h` 的 `deviceCredential`。
+3. 在 Neon 執行 002 migration，再部署 Backend；`/admin` 不再建立或列出 device。
+4. 用 Postman 或固定 JPEG 模擬 ESP32 完成 `initiate → PUT → complete`。
+5. 驗證同一 `clientRequestId` 不重複，錯誤 token 得到 `401`。
 
 ### Gate C：領取碼
 
@@ -540,14 +567,14 @@ Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作
 
 ### Gate E：管理、清理與部署
 
-1. 驗證 Admin JWT、Axios Bearer interceptor、裝置撤銷與永久刪除。
+1. 驗證 Admin JWT、Axios Bearer interceptor、固定 token 輪替與永久刪除。
 2. 確認 Vercel Cron 已註冊每日 cleanup；Hobby 方案不能使用每小時排程。
 3. 執行安全測試、typecheck、lint、production build 與 E2E。
 4. 建立 Frontend／Backend 兩個 Vercel projects；Frontend 綁定 `tiger-camera.fengyenchia.com`，Backend 綁定 `api.tiger-camera.fengyenchia.com` 並設定 secrets、`FRONTEND_ORIGIN`、`API_PUBLIC_URL`，Frontend 設定 `NEXT_PUBLIC_API_BASE_URL`。
 
 ## 14. 最小驗證清單
 
-1. 已撤銷 device credential 無法 initiate。
+1. 錯誤或已輪替的 `DEVICE_UPLOAD_TOKEN` 無法 initiate／complete。
 2. 未完成 original PUT 時，complete 不回領取碼。
 3. 同一拍攝重試不建立重複草稿。
 4. 錯誤領取碼回一般錯誤；猜碼與狀態差異不是 V1 安全需求。
@@ -566,8 +593,9 @@ Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作
 
 ### ESP32 收到 `401 DEVICE_UNAUTHORIZED`
 
-- 確認 device ID／credential 沒有空白或被撤銷。
-- 不要印出完整 credential；只記 device ID 與錯誤碼。
+- 確認 Vercel Backend 的 `DEVICE_UPLOAD_TOKEN` 與韌體 `secrets.h` 的 `deviceCredential` 完全相同，且至少 32 bytes、沒有前後空白。
+- 更新 Vercel environment 後必須重新部署；更新韌體後必須重新 build／upload。
+- 不要印出完整 token；Serial 只記 HTTP 狀態與錯誤碼。
 
 ### R2 `SignatureDoesNotMatch`
 

@@ -8,7 +8,7 @@ Gate L0 功能流程已由實機與正式服務跑通：ESP32 拍照後向 Backe
 
 ```mermaid
 flowchart LR
-    C[ESP32-S3-CAM] -->|Device Bearer| A[Backend API]
+    C[ESP32-S3-CAM] -->|固定 DEVICE_UPLOAD_TOKEN Bearer| A[Backend API]
     A -->|短效 PUT URL| C
     C -->|原始 JPEG| R[(Private R2)]
     C -->|6 位碼| U[使用者手機]
@@ -34,14 +34,14 @@ flowchart LR
 - Wi-Fi／TLS 失敗不阻塞拍照。
 - API 與 R2 使用各自信任根；不使用 `setInsecure()`。
 
-韌體只保存 Wi-Fi 與一次設定、可撤銷的 device credential。現有單一裝置不需每次重新取得 credential；Wi-Fi 連線本身不具有 Backend 驗證能力。R2 key、Neon URL、Admin secret、JWT signing secret 永遠不進韌體或 Serial。
+韌體只保存 Wi-Fi 與固定高熵 `DEVICE_UPLOAD_TOKEN`。同一值只存在 Backend environment 與被 Git 忽略的韌體 `secrets.h`，Frontend 與管理頁都不讀取。Wi-Fi 連線本身不具有 Backend 驗證能力。R2 key、Neon URL、Admin secret、JWT signing secret 永遠不進韌體或 Serial。
 
-V1 保留 Device Bearer 驗證，因為 API 位於公開網域。管理頁建立裝置只是初次 provision／遺失後輪替工具，不是每次拍照流程。若未來精簡成單一固定 `DEVICE_UPLOAD_TOKEN`，仍必須同時存在 Backend environment 與韌體 secrets，不能開放匿名 initiate／complete。
+Backend 以 constant-time 比對 Bearer token；V1 只有一台相機，因此不再建立、列出或撤銷 `devices`。需要失效舊 token 時，同步輪替 Backend 與韌體的值，不能開放匿名 initiate／complete。
 
 ## Web 邊界
 
 - `web/frontend/`：UI、Axios 呼叫層、claim session、Canvas、下載、相簿與 admin UI。
-- `web/backend/`：Next.js Route Handlers、Neon、R2、Device／Claim／Admin auth、cleanup、Swagger。
+- `web/backend/`：Next.js Route Handlers、Neon、R2、固定 upload token／Claim／Admin auth、cleanup、Swagger。
 - Claim token 是資料庫保存 hash 的 opaque UUID，放在 `sessionStorage`。
 - Admin JWT 按目前需求放在 `localStorage`，Frontend 主動送 `Authorization: Bearer`；因此必須維持嚴格 XSS 防護。
 
@@ -49,8 +49,8 @@ V1 保留 Device Bearer 驗證，因為 API 位於公開網域。管理頁建立
 
 | Method | Route | 權限 | 功能 |
 | --- | --- | --- | --- |
-| POST | `/api/device/drafts/initiate` | Device | 建立草稿與 original PUT URL |
-| POST | `/api/device/drafts/:id/complete` | Device | 驗證 R2 object，建立 6 位碼 |
+| POST | `/api/device/drafts/initiate` | 固定 upload token | 建立草稿與 original PUT URL |
+| POST | `/api/device/drafts/:id/complete` | 固定 upload token | 驗證 R2 object，建立 6 位碼 |
 | POST | `/api/drafts/claim` | Public code | 消耗代碼並取得 claim UUID token |
 | GET | `/api/drafts/:id/image` | Claim | Backend 驗證後直接代理私人 JPEG |
 | POST | `/api/drafts/:id/process/initiate` | Claim | 取得完成圖 PUT URL |

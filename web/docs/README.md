@@ -10,7 +10,7 @@
 
 ## 已完成
 
-- Device initiate／complete、短效 R2 PUT、6 位領取碼與 opaque UUID claim token。
+- 固定 `DEVICE_UPLOAD_TOKEN` initiate／complete、短效 R2 PUT、6 位領取碼與 opaque UUID claim token。
 - Claim 後由 Backend 代理私人原圖，已排除 R2 GET redirect CORS 問題。
 - Canvas 拍立得框、日期、文字、濾鏡與基本影像調整；可全部關閉。
 - 完成圖下載、R2 PUT、publish、公開後自動前往相簿。
@@ -25,7 +25,7 @@
 - 公開訪客：只讀公開相簿。
 - Claim holder：`sessionStorage` 保存 UUID token，只能操作一張草稿。
 - Admin：依目前需求用 `localStorage` 保存短效 JWT，由 Axios 主動加 `Authorization: Bearer`。
-- Device：只保存可撤銷 credential，不保存 R2／Neon／Admin secret。
+- 相機：只保存固定高熵 `DEVICE_UPLOAD_TOKEN`，不保存 R2／Neon／Admin secret；Frontend 不接觸此 token。
 
 ## 儲存生命週期
 
@@ -39,7 +39,7 @@
 Android Chrome 的 W0／I0 功能流程已通過，目前進入 P0。Web 的發布前待辦移至 R0：
 
 1. iPhone Safari 的領取、Canvas、下載與公開矩陣。
-2. 裝置撤銷、30 次完整上傳、5 次斷線恢復。
+2. 固定 token 輪替、30 次完整上傳、5 次斷線恢復。
 3. Cleanup cron 的 Neon／R2 一致性證據與 orphan object 測試。
 4. 草稿待傳 IndexedDB／下載 fallback 的發布前決策與測試。
 5. 最終 lint、typecheck、tests、production build 與安全檢查。

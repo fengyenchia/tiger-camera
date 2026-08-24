@@ -19,7 +19,7 @@
 2. Backend 確認 `FRONTEND_ORIGIN=https://tiger-camera.fengyenchia.com`、`API_PUBLIC_URL=https://api.tiger-camera.fengyenchia.com`。
 3. Frontend 確認 `NEXT_PUBLIC_API_BASE_URL=https://api.tiger-camera.fengyenchia.com/api`。
 4. 打開 `/api/health`、`/api/docs`、首頁與公開相簿。
-5. 不把 `.env.local`、Admin JWT、Device credential、Neon 或 R2 secrets 加入 Git。
+5. 不把 `.env.local`、Admin JWT、`DEVICE_UPLOAD_TOKEN`、Neon 或 R2 secrets 加入 Git。
 
 ## 1. W0 桌面 Smoke Test
 

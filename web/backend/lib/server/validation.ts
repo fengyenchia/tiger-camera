@@ -100,6 +100,7 @@ export function handleRouteError(error: unknown) {
   if (
     message.startsWith("MISSING_ENV_") ||
     message === "ADMIN_JWT_SECRET_TOO_SHORT" ||
+    message === "DEVICE_UPLOAD_TOKEN_TOO_SHORT" ||
     message === "INVALID_API_PUBLIC_URL"
   ) {
     return NextResponse.json({ code: "SERVER_NOT_CONFIGURED" }, { status: 503 });

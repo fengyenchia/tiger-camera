@@ -60,6 +60,14 @@ export function getCronSecret() {
   return requireValue("CRON_SECRET");
 }
 
+export function getDeviceUploadToken() {
+  const token = requireValue("DEVICE_UPLOAD_TOKEN");
+  if (new TextEncoder().encode(token).byteLength < 32) {
+    throw new Error("DEVICE_UPLOAD_TOKEN_TOO_SHORT");
+  }
+  return token;
+}
+
 export function getApiUrl(path: string) {
   const base = normalizeUrl(process.env.API_PUBLIC_URL?.trim() || "http://localhost:3001");
   let parsed: URL;

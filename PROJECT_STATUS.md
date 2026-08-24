@@ -36,20 +36,21 @@ Tiger Camera 已完成 Gate H1、L0、W0 與 I0 的功能驗收。2026-08-24 使
 - 公開後跳轉相簿，公開照片可用 overlay 放大。
 - 每張公開照片卡片都有下載按鈕；`GET /api/photos/:id/image?download=1` 由 Backend 直接回傳 JPEG attachment，不再依賴跨網域 redirect 觸發下載。
 
-> Gate L0 的功能流程已通過；30 次完整上傳、5 次斷線恢復及裝置憑證撤銷仍列為發布前的量化強化測試，不能冒充已完成的實測紀錄。
+> Gate L0 的功能流程已通過；30 次完整上傳、5 次斷線恢復及固定 upload token 輪替仍列為發布前的量化強化測試，不能冒充已完成的實測紀錄。
 
 ## 下一步
 
 1. **P0**：外接有保護的 3.7V 單節鋰電池與 5V 充電升壓模組；完成極性、輸出、壓降、溫升、低壓截止與續航測試。
 2. **E0**：量測全部零件後做基本矩形外殼。
-3. **R0**：iPhone Safari 相容性、壓力／斷線／撤銷測試與草稿、R2 物件清理證據。
+3. **R0**：iPhone Safari 相容性、壓力／斷線／token 輪替測試與草稿、R2 物件清理證據。
 
 ## 單一裝置驗證決策
 
-- 現有 Tiger Camera S3 的 device credential 已完成一次性 provision；正常使用不需再次到管理頁取得。
-- 不採用「只要連上任意 Wi-Fi 就能匿名上傳」。Backend 是公開網域，Wi-Fi 無法證明請求來自這台相機；匿名 initiate 會讓任何人消耗 R2／Neon 額度。
-- V1 先保留現有 credential 驗證。管理頁的建立／撤銷裝置區不是日常操作，可以在後續 UI 精簡時隱藏。
-- 若日後要移除 devices 管理流程，安全替代方案是一組只存在 Backend environment 與韌體 `secrets.h` 的固定 `DEVICE_UPLOAD_TOKEN`，不能改成無驗證。
+- 2026-08-24 改為單一固定高熵 `DEVICE_UPLOAD_TOKEN`；Backend 以 constant-time 比對 Bearer token，不再查詢 `devices`。
+- 同一值只放在 Vercel／Backend `.env.local` 與被 Git 忽略的韌體 `secrets.h`。Frontend 不保存、顯示或取得此 token。
+- `/admin` 已移除建立、列出與撤銷裝置流程，只保留管理員登入與公開照片永久刪除。
+- 不採用「只要連上任意 Wi-Fi 就能匿名上傳」。若 token 外洩，需同時輪替 Backend 與韌體的值；舊 token 應立即得到 `401`。
+- production Neon 在部署新版 Backend 前先執行 `002_fixed_device_upload_token.sql`；歷史 `devices` 與 `photo.device_id` 暫時保留但不再被程式讀寫，避免破壞既有照片。
 
 ## P0 尚未鎖定的事
 

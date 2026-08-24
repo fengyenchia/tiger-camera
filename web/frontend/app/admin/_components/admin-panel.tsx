@@ -2,8 +2,6 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
-  IconCopy,
-  IconDeviceCameraPhone,
   IconLogin,
   IconLogout,
   IconRefresh,
@@ -12,15 +10,12 @@ import {
 
 import {
   adminTokenKey,
-  createAdminDevice,
   deleteAdminPhoto,
-  listAdminDevices,
   loginAdmin,
   logoutAdmin,
-  updateAdminDevice,
 } from "@/api/admin";
 import { listPhotos } from "@/api/photos";
-import type { AdminDevice, Photo } from "@/api/types";
+import type { Photo } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,20 +24,13 @@ export function AdminPanel() {
   const [authenticated, setAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [deviceName, setDeviceName] = useState("Tiger Camera S3");
-  const [credential, setCredential] = useState<string | null>(null);
-  const [devices, setDevices] = useState<AdminDevice[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("只有管理員可以進行永久刪除與裝置管理");
+  const [message, setMessage] = useState("只有管理員可以永久刪除公開照片");
 
   const loadData = useCallback(async () => {
-    const [nextDevices, nextPhotos] = await Promise.all([
-      listAdminDevices(),
-      listPhotos().then((result) => result.photos),
-    ]);
-    setDevices(nextDevices);
-    setPhotos(nextPhotos);
+    const result = await listPhotos();
+    setPhotos(result.photos);
   }, []);
 
   useEffect(() => {
@@ -75,33 +63,6 @@ export function AdminPanel() {
     }
   }
 
-  async function handleCreateDevice() {
-    setBusy(true);
-    try {
-      const result = await createAdminDevice(deviceName.trim());
-      setCredential(result.credential);
-      await loadData();
-      setMessage("裝置已建立；credential 只會顯示這一次，請立即保存到 ESP32 secrets");
-    } catch {
-      setMessage("裝置建立失敗");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDeviceStatus(device: AdminDevice) {
-    setBusy(true);
-    try {
-      await updateAdminDevice(device.id, device.status === "active" ? "revoked" : "active");
-      await loadData();
-      setMessage(device.status === "active" ? "裝置憑證已撤銷" : "裝置已重新啟用");
-    } catch {
-      setMessage("裝置狀態更新失敗");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleDeletePhoto(photo: Photo) {
     setBusy(true);
     try {
@@ -118,9 +79,7 @@ export function AdminPanel() {
   function handleLogout() {
     logoutAdmin();
     setAuthenticated(false);
-    setDevices([]);
     setPhotos([]);
-    setCredential(null);
     setMessage("已登出");
   }
 
@@ -151,49 +110,11 @@ export function AdminPanel() {
       <header className="flex flex-col gap-5 border-b border-primary/30 pb-8 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="mb-3 font-title text-sm font-extrabold tracking-[0.14em] text-primary">ADMIN CONSOLE</p>
-          <h1 className="subTitle">相機與相簿管理</h1>
+          <h1 className="subTitle">相簿管理</h1>
           <p className="mt-3 text-sm font-bold text-primary" aria-live="polite">{message}</p>
         </div>
         <Button variant="ghost" onClick={handleLogout}><IconLogout />登出</Button>
       </header>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>建立相機裝置</CardTitle>
-            <CardDescription>建立後只顯示一次 device credential。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input value={deviceName} onChange={(event) => setDeviceName(event.target.value)} maxLength={80} />
-            <Button onClick={() => void handleCreateDevice()} disabled={busy || !deviceName.trim()}>
-              <IconDeviceCameraPhone />建立裝置
-            </Button>
-            {credential && (
-              <div className="rounded-primary bg-primary/10 p-4">
-                <p className="break-all font-mono text-sm font-bold">{credential}</p>
-                <Button className="mt-3" size="sm" variant="ghost" onClick={() => void navigator.clipboard.writeText(credential)}>
-                  <IconCopy />複製 credential
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>已註冊裝置</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {devices.length === 0 && <p className="text-sm font-bold text-foreground/60">尚未建立裝置</p>}
-            {devices.map((device) => (
-              <div key={device.id} className="flex items-center justify-between gap-3 rounded-primary border border-primary/25 p-4">
-                <div><p className="font-extrabold">{device.name}</p><p className="text-xs font-bold text-foreground/60">{device.status}</p></div>
-                <Button size="sm" variant="ghost" disabled={busy} onClick={() => void handleDeviceStatus(device)}>
-                  {device.status === "active" ? "撤銷" : "啟用"}
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
 
       <Card>
         <CardHeader>

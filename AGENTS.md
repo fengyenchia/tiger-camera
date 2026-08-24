@@ -27,7 +27,7 @@ V1 includes:
 - post-capture photo review without random text
 - battery and charging states
 - Wi-Fi station connection to a configured 2.4 GHz phone hotspot or trusted network, with reconnect and upload retry
-- private draft upload using a revocable, device-scoped credential
+- private draft upload using one fixed high-entropy `DEVICE_UPLOAD_TOKEN` shared only by the Backend environment and firmware secrets
 - six-character, 24-hour, single-photo pairing codes shown on the camera display
 - passive NFC fixed URL access to `/create` and Canvas-based retro processing on the claimant's phone
 - downloadable finished JPEGs
@@ -91,14 +91,16 @@ Do not begin detailed enclosure work before that gate passes.
   metadata are confirmed. Keep a retry or finished-image download fallback when
   internet access is absent.
 - Treat Wi-Fi failure as non-fatal to the core camera.
-- Never store administrator JWTs, R2 credentials or Neon credentials in firmware. Firmware may store only a revocable device-scoped upload credential.
+- Never store administrator JWTs, R2 credentials or Neon credentials in firmware. Firmware may store only Wi-Fi settings and the fixed high-entropy `DEVICE_UPLOAD_TOKEN`; the Frontend must never receive it.
 - A draft must remain private until its claim holder explicitly publishes it.
 - Claim codes are convenience pairing codes, not a security boundary. Store each
   six-character code directly with a UNIQUE constraint and 24-hour expiry; on
   the first successful claim, clear it and issue a database-backed opaque UUID
   Bearer token scoped to that draft. Do not use a claim JWT, HMAC or claim-code
-  brute-force protection in V1. Administrator JWT and device credential security
-  remain required.
+  brute-force protection in V1. Administrator JWT and fixed device upload token
+  security remain required. V1 has one camera, so do not add device creation,
+  listing or revocation UI; rotate the shared token in Backend and firmware when
+  it must be invalidated.
 - Keep secrets, real Wi-Fi passwords and admin PINs out of Git.
 - Do not commit unlicensed fonts, graphics or third-party 3D assets.
 - Update relevant docs and `PROJECT_STATUS.md` when a hardware assumption is
@@ -117,7 +119,7 @@ When the web app exists:
 - run formatting, type checking, tests and production build
 - test processed-image output with landscape and portrait fixtures
 - test device private upload, claim-code exchange, claimant publish, public listing and reading, administrator authentication and one-click permanent deletion
-- verify public visitors, claim holders, devices and administrators cannot exceed their respective scopes
+- verify public visitors, claim holders, the fixed upload-token holder and administrators cannot exceed their respective scopes
 
 For hardware milestones, use `docs/test-plan.md`. Never claim a physical test
 passed without results from the actual device.

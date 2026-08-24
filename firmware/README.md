@@ -9,7 +9,7 @@
 - GPIO1 快門
 - 固定 XGA 預覽／拍照、拍後回看
 - PSRAM 保存最新 JPEG
-- Wi-Fi station、NTP、Device API、R2 PUT、complete 與領取碼
+- Wi-Fi station、NTP、固定 upload token API、R2 PUT、complete 與領取碼
 - Gate H1 與 Gate L0 功能流程通過；128×128 顯示的 RGB 色序與方形即時預覽已實機驗證
 
 燒錄、secret、Serial log 與實機驗收請讀 [`tiger-camera-v1/README.md`](tiger-camera-v1/README.md)。

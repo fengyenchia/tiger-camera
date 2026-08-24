@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireDevice } from "@/lib/server/device-auth";
+import { requireDeviceUploadToken } from "@/lib/server/device-auth";
 import { createOrGetUploadingDraft } from "@/lib/server/drafts";
 import { createJpegPutUrl } from "@/lib/server/r2";
 import {
@@ -25,11 +25,11 @@ export const runtime = "nodejs";
  *     responses:
  *       201: { description: 草稿已建立 }
  *       400: { description: 輸入格式錯誤 }
- *       401: { description: Device credential 無效 }
+ *       401: { description: DEVICE_UPLOAD_TOKEN 無效 }
  */
 export async function POST(request: Request) {
   try {
-    const device = await requireDevice(request);
+    requireDeviceUploadToken(request);
     const body = await readJson(request);
     const clientRequestId = requiredUuid(body, "clientRequestId");
     const capturedAt = requiredIsoDate(body, "capturedAt");
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       throw new ApiError("INVALID_CAPTURE_TIME", 400);
     }
 
-    const draft = await createOrGetUploadingDraft(device.id, {
+    const draft = await createOrGetUploadingDraft({
       capturedAt,
       clientRequestId,
       height,
@@ -67,4 +67,3 @@ export async function POST(request: Request) {
     return handleRouteError(error);
   }
 }
-
