@@ -51,6 +51,9 @@ Gate L0 的功能流程通過。以下屬 R0 發布前強化，不宣稱已測�
 | W-06 | 管理員 | 無 Admin Bearer 不可刪；有權限時一次永久刪除 |
 | W-07 | 清理 | 發布／逾期／刪除後 Neon 與 R2 最終一致 |
 | W-08 | Secrets | Frontend bundle、log、Git 沒有 R2／Neon／JWT secret |
+| W-09 | 公開圖直接下載 | 卡片外側按鈕取得 `200 image/jpeg` attachment，不開新圖片頁；Dialog 不重複放按鈕 |
+
+W0／I0 的逐步手機與 NFC 執行表見 [`w0-i0-guide.md`](w0-i0-guide.md)。
 
 ## I0：NFC
 

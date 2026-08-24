@@ -484,8 +484,8 @@ Publish 成功時會清除 claim token，因此不會建立重複照片。若用
 | Method | Path | 權限 |
 |---|---|---|
 | `GET` | `/api/photos` | 公開，只列 `active` |
-| `GET` | `/api/photos/:id/image` | 公開，只讀 `active` 完成圖 |
-| `DELETE` | `/api/photos/:id` | Admin JWT |
+| `GET` | `/api/photos/:id/image` | 公開，只讀 `active` 完成圖；一般檢視 307 redirect，`?download=1` 回 200 JPEG attachment |
+| `DELETE` | `/api/admin/photos/:id` | Admin JWT |
 
 永久刪除仍是一次操作、沒有二次確認：
 

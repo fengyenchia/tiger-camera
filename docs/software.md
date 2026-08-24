@@ -54,7 +54,7 @@ flowchart LR
 | POST | `/api/drafts/:id/process/initiate` | Claim | 取得完成圖 PUT URL |
 | POST | `/api/drafts/:id/publish` | Claim | 驗證完成圖並選擇是否公開 |
 | GET | `/api/photos` | Public | 公開相簿 metadata |
-| GET | `/api/photos/:id/image` | Public | 307 到短效公開完成圖 URL |
+| GET | `/api/photos/:id/image` | Public | 一般檢視 307 到短效完成圖 URL；`?download=1` 由 Backend 回 200 JPEG attachment |
 | POST | `/api/admin/login` | Public | 取得 Admin JWT |
 | DELETE | `/api/admin/photos/:id` | Admin | 一次永久刪除 metadata 與 object |
 | GET | `/api/cron/cleanup` | Cron | 清理逾期草稿與待刪物件 |

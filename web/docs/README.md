@@ -14,7 +14,8 @@
 - Claim 後由 Backend 代理私人原圖，已排除 R2 GET redirect CORS 問題。
 - Canvas 拍立得框、日期、文字、濾鏡與基本影像調整；可全部關閉。
 - 完成圖下載、R2 PUT、publish、公開後自動前往相簿。
-- 公開相簿與 Dialog overlay 放大。
+- 公開相簿與 Dialog overlay 放大；每張卡片外側提供單一下載按鈕。
+- 公開圖 `?download=1` 由 Backend 直接代理 JPEG attachment，避免跨網域 redirect 只開圖不下載。
 - Admin Bearer JWT 登入、裝置管理與一次永久刪除。
 - Swagger `/api/docs` 與 OpenAPI `/api/openapi`。
 - 正式 Frontend／Backend 網域、Neon、R2 及實機端到端功能流程。
@@ -33,7 +34,7 @@
 - 發布／逾期後清除 Original；失敗由 cleanup 重試。
 - 管理員刪除是一次永久刪除，沒有垃圾桶或復原。
 
-## 待完成
+## 目前階段：W0／I0
 
 1. iOS Safari、Android Chrome 的領取、Canvas、下載與公開矩陣。
 2. 裝置撤銷、30 次完整上傳、5 次斷線恢復。
@@ -41,4 +42,4 @@
 4. 草稿待傳 IndexedDB／下載 fallback 的發布前決策與測試。
 5. 最終 lint、typecheck、tests、production build 與安全檢查。
 
-詳細建置、API 與 Postman 順序見 [`backend-setup.md`](backend-setup.md)。
+詳細建置、API 與 Postman 順序見 [`backend-setup.md`](backend-setup.md)；手機與 NFC 驗收依 [`../../docs/w0-i0-guide.md`](../../docs/w0-i0-guide.md)。

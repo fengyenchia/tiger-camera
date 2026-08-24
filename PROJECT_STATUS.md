@@ -4,7 +4,7 @@
 
 ## 結論
 
-Tiger Camera 已完成 Gate H1 與 Gate L0 的功能驗收，可以進入行動 Web／NFC 收尾及外接電池 Gate P0。使用者已確認目前固定 XGA 畫面與拍照結果可接受，拍照、上傳與領取流程沒有功能性阻礙。
+Tiger Camera 已完成 Gate H1 與 Gate L0 的功能驗收，現在正式進入 W0／I0。使用者已確認固定 XGA 拍照與螢幕沒有問題；Web 已完成公開照片卡片下載按鈕與 Backend 直接附件下載路由，下一步是部署後的 iPhone／Android 與 NFC 實機驗收。
 
 ## 已確認硬體
 
@@ -14,7 +14,7 @@ Tiger Camera 已完成 Gate H1 與 Gate L0 的功能驗收，可以進入行動 
 - ST7735 SPI，實際解析度 `128x128`；面板實際對角尺寸與 PCB 外形仍須量測
 - 快門 GPIO1，閒置 HIGH、按下接 GND
 - 顯示設定：`INITR_144GREENTAB`、BGR、`invertDisplay(false)`；RGB 色序與方形即時預覽已確認
-- 相機設定：固定 XGA `1024x768`、JPEG quality 8、brightness +2、contrast 0、saturation 0、AE level +2、gain ceiling 4x；待重新上傳原圖確認亮度與色彩
+- 相機設定：固定 XGA `1024x768`、JPEG quality 8、brightness +1、contrast -1、saturation 0、AE level +2、gain ceiling 8x
 
 ## 已通過
 
@@ -34,13 +34,14 @@ Tiger Camera 已完成 Gate H1 與 Gate L0 的功能驗收，可以進入行動 
 - 使用者可在網站領取原圖、Canvas 後製、下載並選擇公開。
 - 私人原圖由 Backend 驗證 claim token 後代理回傳，避免瀏覽器直接讀 R2 的 CORS 問題。
 - 公開後跳轉相簿，公開照片可用 overlay 放大。
+- 每張公開照片卡片都有下載按鈕；`GET /api/photos/:id/image?download=1` 由 Backend 直接回傳 JPEG attachment，不再依賴跨網域 redirect 觸發下載。
 
 > Gate L0 的功能流程已通過；30 次完整上傳、5 次斷線恢復及裝置憑證撤銷仍列為發布前的量化強化測試，不能冒充已完成的實測紀錄。
 
 ## 下一步
 
-1. **影像微調**：重新上傳原圖，確認 brightness +2／saturation 0 的網站亮度與色彩。
-2. **W0／I0**：手機版領取與 Canvas 輸出、NFC 固定網址、管理員刪除及跨瀏覽器驗收。
+1. **W0**：部署最新前後端，完成 iOS Safari／Android Chrome 的領取、Canvas 亮度與輸出、公開照片直接下載、發布、相簿與管理員刪除矩陣。
+2. **I0**：把 NFC 寫成固定 `/create` 網址，以 iPhone／Android 驗證掃描位置、開啟與手動網址備援；驗收前不要永久鎖定。
 3. **P0**：外接有保護的 3.7V 單節鋰電池與 5V 充電升壓模組；完成極性、輸出、壓降、溫升、低壓截止與續航測試。
 4. **E0**：量測全部零件後做基本矩形外殼。
 5. **R0**：壓力／斷線／撤銷測試與草稿、R2 物件清理證據。

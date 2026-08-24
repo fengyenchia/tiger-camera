@@ -8,18 +8,22 @@
 | H1 | 相機＋128×128 ST7735＋快門＋PSRAM 最新 JPEG 共存 | 已通過 |
 | L0 | 私人草稿上傳、領取碼、claim、後製與發布功能流程 | 已通過 |
 | W0 | 行動版後製、下載、公開相簿與管理端完整驗收 | 進行中 |
-| I0 | NFC 固定網址與現場領取流程 | 待驗收 |
+| I0 | NFC 固定網址與現場領取流程 | 進行中 |
 | P0 | 外接鋰電池、充電／保護／5V 升壓與續航 | 下一個硬體 Gate |
 | E0 | 基本矩形外殼 | P0 後開始 |
 | R0 | 壓力、安全、清理排程與發布檢查 | 待完成 |
 
 ## W0：Web 收尾
 
+- 部署目前 Frontend 與 Backend；公開照片卡片外側保留一個下載按鈕。
+- `GET /api/photos/:id/image?download=1` 必須回 `200 image/jpeg` 與 attachment，不開啟圖片頁面。
 - iOS Safari 與 Android Chrome 可領取、後製及下載直式／橫式 JPEG。
 - 拍立得框、日期、文字、濾鏡與基本調整可任意開關。
 - 公開後自動進入相簿，照片可以 overlay 放大。
 - 未公開草稿不能出現在公開 API；只有管理員 Bearer token 能永久刪除。
 - 完成圖與資料庫 metadata 成功後才顯示保存成功。
+
+詳細執行順序與記錄表見 [`w0-i0-guide.md`](w0-i0-guide.md)。
 
 ## I0：NFC
 

@@ -19,7 +19,7 @@
 | POST | `/api/drafts/:id/process/initiate` | Claim Bearer | 建立 processed PUT URL |
 | POST | `/api/drafts/:id/publish` | Claim Bearer | 確認完成圖與公開選擇 |
 | GET | `/api/photos` | Public | 公開 metadata |
-| GET | `/api/photos/:id/image` | Public | Redirect 至短效完成圖 URL |
+| GET | `/api/photos/:id/image` | Public | 一般檢視 redirect；`?download=1` 直接回 JPEG attachment |
 | POST | `/api/admin/login` | Public | Admin JWT |
 | DELETE | `/api/admin/photos/:id` | Admin Bearer | 一次永久刪除 |
 | GET | `/api/cron/cleanup` | Cron secret | 清理逾期與待刪物件 |

@@ -20,7 +20,7 @@ AroundTW／GOOUUU ESP32-S3-CAM（ESP32-S3-WROOM-1-N16R8＋OV2640）的正式 Pla
 - Camera：OV2640，PID `0x26`
 - Display：ST7735 `128x128`、`INITR_144GREENTAB`、BGR、`invertDisplay(false)`
 - Shutter：GPIO1，閒置 HIGH，按下接 GND
-- Camera tuning：JPEG quality 8、brightness +2、contrast 0、saturation 0、AE level +2、gain ceiling 4x；待重新上傳原圖確認
+- Camera tuning：JPEG quality 8、brightness +1、contrast -1、saturation 0、AE level +2、gain ceiling 8x
 
 先前測過快門時由 VGA 切換 UXGA，但會嚴重欠曝，已淘汰。正式路徑固定使用 XGA，避免重新啟動曝光與白平衡收斂。
 
@@ -62,6 +62,7 @@ ESP32 不保存 Admin JWT、R2 access key、Neon connection string 或 JWT signi
 
 - Gate H1：10 次冷啟動、30 次連拍與 PSRAM 已通過；128×128 `INITR_144GREENTAB` 的 RGB 色序與方形即時預覽已重新實機確認。
 - Gate L0：實機 Wi-Fi、TLS、R2 upload、complete、領取碼與網站 claim 已通過功能驗收。
+- 目前進入 W0／I0；韌體核心不再因網站顯示亮度重調，Web 成品亮度由 Canvas 控制並在手機矩陣驗收。
 - 發布前仍需補 30 次完整上傳、5 次斷線恢復及 device credential 撤銷的量化紀錄。
 
 ## 外接電池

@@ -7,7 +7,7 @@ Tiger Camera 是以 AroundTW／GOOUUU ESP32-S3-CAM（ESP32-S3-WROOM-1-N16R8、OV
 - Gate H1：相機、128×128 ST7735、快門與 PSRAM 共存已通過實機驗收。
 - Gate L0：拍照、上傳、領取碼、瀏覽器領取與 Web 後製的功能流程已通過。
 - Web：Frontend、Backend、Neon、Cloudflare R2 與正式網域均已接通。
-- 下一步：完成 Web 行動裝置驗收與 NFC，之後進行外接鋰電池／充電升壓模組 Gate P0，最後才鎖定外殼。
+- 目前階段：W0／I0 行動 Web 與 NFC 驗收；完成後進行外接鋰電池／充電升壓模組 Gate P0，最後才鎖定外殼。
 
 目前實機採固定 XGA `1024x768` 拍照與預覽；短按快門會拍攝 JPEG、顯示照片並上傳，螢幕不顯示隨機文字。下一張成功照片會取代裝置 PSRAM 中的上一張。
 
@@ -28,7 +28,8 @@ Tiger Camera 是以 AroundTW／GOOUUU ESP32-S3-CAM（ESP32-S3-WROOM-1-N16R8、OV
 2. 目前狀態與下一步看 [`PROJECT_STATUS.md`](PROJECT_STATUS.md)。
 3. 韌體操作看 [`firmware/tiger-camera-v1/README.md`](firmware/tiger-camera-v1/README.md)。
 4. Web 建置看 [`web/docs/backend-setup.md`](web/docs/backend-setup.md)。
-5. 電池與升壓模組接線、驗收看 [`docs/hardware.md`](docs/hardware.md) 與 [`docs/test-plan.md`](docs/test-plan.md)。
+5. W0／I0 依 [`docs/w0-i0-guide.md`](docs/w0-i0-guide.md) 執行。
+6. 電池與升壓模組接線、驗收看 [`docs/hardware.md`](docs/hardware.md) 與 [`docs/test-plan.md`](docs/test-plan.md)。
 
 ## V1 原則
 

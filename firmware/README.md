@@ -1,6 +1,6 @@
 # Firmware
 
-正式且唯一維護的韌體專案是 [`tiger-camera-v1/`](tiger-camera-v1/)。早期的 CameraWebServer、Wi-Fi 與 ST7735 單功能範例已完成驗證用途，不再作為專案入口。
+正式且唯一維護的韌體專案是 [`tiger-camera-v1/`](tiger-camera-v1/)。早期 CameraWebServer、Wi-Fi 與 ST7735 單功能範例已完成驗證用途並從 repository 刪除。
 
 ## 已確認
 
