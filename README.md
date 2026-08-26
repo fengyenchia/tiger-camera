@@ -40,6 +40,6 @@ Tiger Camera 是以 AroundTW／GOOUUU ESP32-S3-CAM（ESP32-S3-WROOM-1-N16R8、OV
 - Wi-Fi 失敗不能讓基本拍照功能失效。
 - V1 不做 GIF、錄影、公開註冊、藍牙傳圖、AI 濾鏡或社群自動上傳。
 
-## Git 與秘密
+<!-- ## Git 與秘密
 
-API 網址、Frontend 網址與 R2 hostname 不是秘密，必須能被瀏覽器或裝置看見；真正不可公開的是密碼、token、JWT signing secret、Neon connection string、R2 access key 與私人金鑰。這些值只放在被 `.gitignore` 排除的 `.env.local` 或 `secrets.h`。Repository 只保留不含真值的 `.env.example` 與 `secrets.example.h`。
+API 網址、Frontend 網址與 R2 hostname 不是秘密，必須能被瀏覽器或裝置看見；真正不可公開的是密碼、token、JWT signing secret、Neon connection string、R2 access key 與私人金鑰。這些值只放在被 `.gitignore` 排除的 `.env.local` 或 `secrets.h`。Repository 只保留不含真值的 `.env.example` 與 `secrets.example.h`。 -->
