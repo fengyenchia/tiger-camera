@@ -62,9 +62,9 @@ ESP32 不保存 Admin JWT、R2 access key、Neon connection string 或 JWT signi
 
 - Gate H1：10 次冷啟動、30 次連拍與 PSRAM 已通過；128×128 `INITR_144GREENTAB` 的 RGB 色序與方形即時預覽已重新實機確認。
 - Gate L0：實機 Wi-Fi、TLS、R2 upload、complete、領取碼與網站 claim 已通過功能驗收。
-- Android Chrome 的 W0／I0 功能流程已通過，目前進入 P0；iPhone Safari 留到 R0。
+- Android Chrome 的 W0／I0 功能流程已通過；Gate P0（包含 P0.1 電池電壓與估算百分比顯示）亦已於 2026-08-28 通過使用者實機驗收。目前進入 E0；iPhone Safari 留到 R0。
 - 發布前仍需補 30 次完整上傳、5 次斷線恢復及 `DEVICE_UPLOAD_TOKEN` 輪替的量化紀錄。
 
 ## 外接電池
 
-P0 不修改目前 USB 韌體基線。硬體會以「帶保護 LiPo → 充電／保護／5V 升壓 → 開關 → 主板 5V/GND」供電。未加入 ADC／fuel gauge 前，韌體不顯示假電量百分比。接線與測試見 [`../../docs/hardware.md`](../../docs/hardware.md) 及 [`../../docs/test-plan.md`](../../docs/test-plan.md)。
+P0 的供電路徑是「帶保護 LiPo → 充電／保護 → 開關 → 5V 升壓 → 主板 5V/GND」。P0.1 以 TP4056 `OUT+ / OUT-` 的 100kΩ／100kΩ 分壓接 GPIO3（ADC1_CH2），每秒顯示校正後電壓與估算百分比；這不是 fuel gauge，Wi-Fi／拍照負載會使數字暫時下降。GPIO3 是 strapping pin，僅能接高阻抗分壓，接線後須重新測試開機。完整接線、校正與驗收見 [`../../docs/power-assembly-guide.md`](../../docs/power-assembly-guide.md)。

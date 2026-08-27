@@ -18,6 +18,17 @@ constexpr unsigned long reviewDurationMs = 3500;
 constexpr unsigned long errorDurationMs = 1500;
 constexpr unsigned long shutterDebounceMs = 35;
 
+// P0.1 battery meter. The 100k/100k divider scales the protected LiPo output
+// to one half before it reaches ADC1. `analogReadMilliVolts()` is calibrated
+// by Arduino-ESP32; the final factor is intentionally configurable so it can
+// be matched to the DT-830D after the divider is fitted.
+constexpr unsigned long batterySampleIntervalMs = 1000;
+constexpr uint8_t batterySampleCount = 16;
+constexpr float batteryDividerRatio = 2.0f;
+// Calibrated on 2026-08-28: DT-830D measured 4.00 V while the uncorrected TFT
+// reading was 3.80 V, giving 4.00 / 3.80 = 1.0526.
+constexpr float batteryVoltageCalibration = 1.0526f;
+
 // Gate L0 networking stays independent from the camera state machine. A
 // failed hotspot or upload must never reboot or disable local capture.
 constexpr unsigned long wifiConnectTimeoutMs = 12000;

@@ -2,6 +2,7 @@
 #include "esp_heap_caps.h"
 
 #include "app_config.h"
+#include "battery_monitor.h"
 #include "board_pins.h"
 #include "camera_controller.h"
 #include "display_controller.h"
@@ -27,6 +28,7 @@ LatestPhotoBuffer latestPhoto;
 NetworkManager network;
 UploadManager uploader;
 ShutterButton shutter(BoardPins::shutter, AppConfig::shutterDebounceMs);
+BatteryMonitor battery(BoardPins::batterySense);
 
 CameraState state = CameraState::booting;
 unsigned long stateStartedMs = 0;
@@ -76,6 +78,9 @@ void showLatestPhoto() {
     enterState(CameraState::error);
     return;
   }
+  const BatteryReading& batteryReading = battery.reading();
+  display.showBatteryOverlay(batteryReading.volts, batteryReading.percent,
+                             batteryReading.valid);
   enterState(CameraState::review);
 }
 
@@ -242,6 +247,9 @@ void drawLivePreview() {
   }
   if (frame->format == PIXFORMAT_JPEG) {
     display.drawJpeg(frame->buf, frame->len);
+    const BatteryReading& batteryReading = battery.reading();
+    display.showBatteryOverlay(batteryReading.volts, batteryReading.percent,
+                               batteryReading.valid);
   }
   camera.releaseFrame(frame);
 }
@@ -261,6 +269,7 @@ void setup() {
   delay(800);
 
   display.begin();
+  battery.begin();
 
   // ─── 頁面 1: 四色色塊測試（停留 1 秒）───
   display.showColorTest();
@@ -327,6 +336,7 @@ void setup() {
 
 void loop() {
   const unsigned long now = millis();
+  battery.loop();
   network.loop();
   pollUploadResult();
 

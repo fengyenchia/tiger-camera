@@ -112,6 +112,31 @@ bool DisplayController::drawJpeg(const uint8_t* data, size_t length) {
   return decoded;
 }
 
+void DisplayController::showBatteryOverlay(float volts, uint8_t percent,
+                                           bool valid) {
+  char label[16] = {};
+  if (valid) {
+    snprintf(label, sizeof(label), "%.2fV %u%%", volts,
+             static_cast<unsigned>(percent));
+  } else {
+    strlcpy(label, "BAT --", sizeof(label));
+  }
+
+  tft_.setTextSize(static_cast<uint8_t>(DisplayTextSize::Small));
+  tft_.setTextColor(valid ? ST77XX_YELLOW : ST77XX_RED);
+
+  int16_t boundsX = 0;
+  int16_t boundsY = 0;
+  uint16_t boundsWidth = 0;
+  uint16_t boundsHeight = 0;
+  tft_.getTextBounds(label, 0, 0, &boundsX, &boundsY, &boundsWidth,
+                     &boundsHeight);
+  const int16_t cursorX = tft_.width() - boundsWidth - boundsX - 3;
+  const int16_t cursorY = tft_.height() - boundsHeight - boundsY - 3;
+  tft_.setCursor(cursorX, cursorY);
+  tft_.print(label);
+}
+
 // 顯示一般狀態：短標題使用大字，較長標題使用中號字，避免超出 128px 寬度。
 void DisplayController::showStatus(const char* heading, const char* detail) {
   tft_.fillScreen(ST77XX_BLACK);

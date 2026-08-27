@@ -31,4 +31,10 @@ constexpr int tftClock = 47;
 // Gate H1 candidate. Button connects GPIO1 to GND and uses INPUT_PULLUP.
 constexpr int shutter = 1;
 
+// P0.1 battery divider input. GPIO3 is ADC1_CH2 and is physically exposed on
+// the tested board. It is also a strapping pin, so it must only ever see the
+// high-impedance 100k/100k divider described in docs/power-assembly-guide.md.
+// Do not connect the LiPo directly to this pin.
+constexpr int batterySense = 3;
+
 }  // namespace BoardPins

@@ -18,6 +18,7 @@ class DisplayController {
   void begin();
   void showColorTest();
   bool drawJpeg(const uint8_t* data, size_t length);
+  void showBatteryOverlay(float volts, uint8_t percent, bool valid);
   void showStatus(const char* heading, const char* detail = nullptr);
   void showClaimCode(const char* code);
 
