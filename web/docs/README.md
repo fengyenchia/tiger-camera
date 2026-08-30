@@ -16,7 +16,7 @@
 - 完成圖下載、R2 PUT、publish、公開後自動前往相簿。
 - 公開相簿與 Dialog overlay 放大；每張卡片外側提供單一下載按鈕。
 - 公開圖 `?download=1` 由 Backend 直接代理 JPEG attachment，避免跨網域 redirect 只開圖不下載。
-- Admin Bearer JWT 登入、裝置管理與一次永久刪除。
+- Admin Bearer JWT 登入、公開照片重新命名與一次永久刪除。
 - Swagger `/api/docs` 與 OpenAPI `/api/openapi`。
 - 正式 Frontend／Backend 網域、Neon、R2 及實機端到端功能流程。
 

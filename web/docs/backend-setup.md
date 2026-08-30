@@ -31,7 +31,7 @@
 |---|---|---|---|
 | ESP32 裝置 | 固定高熵 `DEVICE_UPLOAD_TOKEN` | Backend environment＋韌體 secrets | 只能建立與完成私人原圖草稿 |
 | 照片領取者 | 6 位配對碼換來的 opaque UUID token | 使用者手機記憶體或 sessionStorage | 只能讀取、後製與發布同一張草稿 |
-| 管理員 | 短效 Admin JWT | 使用者指定的 localStorage＋Axios Bearer | 登入管理頁、永久刪除公開照片 |
+| 管理員 | 短效 Admin JWT | 使用者指定的 localStorage＋Axios Bearer | 登入管理頁、重新命名與永久刪除公開照片 |
 
 禁止事項：
 
@@ -522,13 +522,14 @@ Body 帶 processing metadata、title、width／height／processedSize。Server�
 
 Publish 成功時會清除 claim token，因此不會建立重複照片。若用戶端在成功 response 前斷線，再次 publish 會回狀態衝突；使用者可重新整理公開相簿確認是否已發布。
 
-## 11. 公開相簿與管理員刪除
+## 11. 公開相簿與管理員管理
 
 | Method | Path | 權限 |
 |---|---|---|
 | `GET` | `/api/photos` | 公開，只列 `active` |
 | `GET` | `/api/photos/:id/image` | 公開，只讀 `active` 完成圖；一般檢視 307 redirect，`?download=1` 回 200 JPEG attachment |
-| `DELETE` | `/api/admin/photos/:id` | Admin JWT |
+| `PATCH` | `/api/photos/:id` | Admin JWT；重新命名 `active` 公開照片，名稱為 1～80 字 |
+| `DELETE` | `/api/photos/:id` | Admin JWT |
 
 永久刪除仍是一次操作、沒有二次確認：
 

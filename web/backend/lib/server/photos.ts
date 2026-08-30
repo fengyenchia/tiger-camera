@@ -34,6 +34,19 @@ export async function getPublicPhotoObject(id: string) {
   return photo;
 }
 
+export async function renamePublicPhoto(id: string, title: string) {
+  const rows = await query<PublicPhotoRow>(
+    `UPDATE photos SET title = $2
+      WHERE id = $1 AND status = 'active'
+      RETURNING id, title, published_at AS "createdAt",
+                filter_preset AS "filterPreset"`,
+    [id, title],
+  );
+  const photo = rows[0];
+  if (!photo) throw new ApiError("PHOTO_NOT_FOUND", 404);
+  return toPhoto(photo);
+}
+
 type DeletingPhoto = { id: string; originalKey: string | null; processedKey: string };
 
 export async function markPhotoDeleting(id: string) {
@@ -98,4 +111,3 @@ function toPhoto(row: PublicPhotoRow): Photo {
     filterPreset: row.filterPreset,
   };
 }
-

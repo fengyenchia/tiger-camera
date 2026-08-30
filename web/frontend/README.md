@@ -7,7 +7,7 @@
 - `/`：專案介紹
 - `/create`：輸入 6 位碼、領取私人草稿、後製、下載或公開
 - `/gallery`：公開相簿、大圖 Dialog，以及每張卡片外側的直接下載按鈕
-- `/admin`：Admin Bearer 登入、裝置與照片管理
+- `/admin`：Admin Bearer 登入、公開照片重新命名與永久刪除
 
 分頁獨有元件放在該 route 的 `_components/`；共用 shadcn primitives 放 `components/ui/`，共用產品元件放 `components/`。前端 API 呼叫集中在根層 `api/`。
 

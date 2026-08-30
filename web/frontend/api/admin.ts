@@ -20,4 +20,11 @@ export async function deleteAdminPhoto(id: string) {
   await adminApiClient.delete(`/photos/${id}`);
 }
 
+export async function renameAdminPhoto(id: string, title: string) {
+  const { data } = await adminApiClient.patch<{ photo: Photo }>(`/photos/${id}`, {
+    title,
+  });
+  return data.photo;
+}
+
 export type { Photo };
