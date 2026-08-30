@@ -19,7 +19,13 @@ import {
 } from "@/api/drafts";
 import type { ClaimedDraft } from "@/api/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -101,7 +107,12 @@ type ToggleOptionProps = {
   onChange: (checked: boolean) => void;
 };
 
-function ToggleOption({ checked, description, label, onChange }: ToggleOptionProps) {
+function ToggleOption({
+  checked,
+  description,
+  label,
+  onChange,
+}: ToggleOptionProps) {
   const id = useId();
 
   return (
@@ -114,7 +125,9 @@ function ToggleOption({ checked, description, label, onChange }: ToggleOptionPro
       />
       <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
         <span className="block font-extrabold">{label}</span>
-        <span className="mt-1 block text-xs font-semibold leading-5 text-foreground/65">{description}</span>
+        <span className="mt-1 block text-xs font-semibold leading-5 text-foreground/65">
+          {description}
+        </span>
       </label>
     </div>
   );
@@ -143,7 +156,9 @@ function RangeControl({
     <div className="space-y-3 rounded-primary border border-primary/25 bg-background p-4">
       <div className="flex items-center justify-between gap-4 text-sm font-extrabold">
         <span>{label}</span>
-        <output className="min-w-12 text-right text-primary">{valueLabel}</output>
+        <output className="min-w-12 text-right text-primary">
+          {valueLabel}
+        </output>
       </div>
       <Slider
         aria-label={label}
@@ -171,7 +186,9 @@ export function PhotoProcessor() {
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [message, setMessage] = useState("掃描機身 NFC 後，輸入相機螢幕上的領取碼");
+  const [message, setMessage] = useState(
+    "掃描機身 NFC 後，輸入相機螢幕上的領取碼",
+  );
 
   useEffect(() => {
     if (!originalBlob) return;
@@ -197,7 +214,9 @@ export function PhotoProcessor() {
         })
         .catch((error: unknown) => {
           if (current) {
-            setMessage(error instanceof Error ? error.message : "這張照片無法完成後製");
+            setMessage(
+              error instanceof Error ? error.message : "這張照片無法完成後製",
+            );
           }
         })
         .finally(() => {
@@ -244,7 +263,9 @@ export function PhotoProcessor() {
         capturedAt: toLocalDateTime(claimed.capturedAt),
       }));
     } catch {
-      setMessage("照片已領取，但原圖下載失敗；請稍後按「重新載入原圖」再試一次");
+      setMessage(
+        "照片已領取，但原圖下載失敗；請稍後按「重新載入原圖」再試一次",
+      );
     } finally {
       setIsLoadingOriginal(false);
     }
@@ -285,7 +306,11 @@ export function PhotoProcessor() {
 
   async function handlePublish() {
     if (!draft || !processedBlob || !publishPublicly) return;
-    if (options.textEnabled && options.textMode === "custom" && !options.customText.trim()) {
+    if (
+      options.textEnabled &&
+      options.textMode === "custom" &&
+      !options.customText.trim()
+    ) {
       setMessage("請輸入文字，或改選預設文字／關閉文字");
       return;
     }
@@ -327,18 +352,27 @@ export function PhotoProcessor() {
   return (
     <div className="space-y-10">
       <header className="max-w-6xl">
-        <p className="mb-4 font-title text-sm font-extrabold tracking-[0.14em] text-primary">CLAIM YOUR PHOTO</p>
-        <h1 className="subTitle">
-          輸入領取碼，帶走你的照片
-        </h1>
+        <p className="mb-4 font-title text-sm font-extrabold tracking-[0.14em] text-primary">
+          CLAIM YOUR PHOTO
+        </p>
+        <h1 className="subTitle">輸入領取碼，帶走你的照片</h1>
         <p className="mt-5 max-w-5xl text-base font-semibold leading-7 text-foreground/65">
-          相機會透過網路先把原圖暫存成私人草稿。掃描機身 NFC 開啟此頁，再輸入螢幕上的領取碼，就能在自己的手機後製並下載完成圖
+          相機會透過網路先把原圖暫存成私人草稿。掃描機身 NFC
+          開啟此頁，再輸入螢幕上的領取碼，就能在自己的手機後製並下載完成圖
         </p>
       </header>
 
       <ol className="grid gap-3 md:grid-cols-4" aria-label="照片領取流程">
-        {["拍照並等待上傳", "掃描機身 NFC", "輸入螢幕領取碼", "後製、下載或公開"].map((label, index) => (
-          <li key={label} className="rounded-primary border border-primary/25 bg-background p-4 text-sm font-extrabold">
+        {[
+          "拍照並等待上傳",
+          "掃描機身 NFC",
+          "輸入螢幕領取碼",
+          "後製、下載或公開",
+        ].map((label, index) => (
+          <li
+            key={label}
+            className="rounded-primary border border-primary/25 bg-background p-4 text-sm font-extrabold"
+          >
             <span className="mr-2 text-primary">{index + 1}.</span>
             {label}
           </li>
@@ -353,11 +387,15 @@ export function PhotoProcessor() {
             </span>
             <CardTitle>領取私人草稿</CardTitle>
             <CardDescription>
-              領取碼只是 6 位照片配對碼，不是安全密碼；24 小時逾時或成功領取後即失效。
+              領取碼只是 6 位照片配對碼，不是安全密碼；24
+              小時逾時或成功領取後即失效。
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4" onSubmit={(event) => void handleClaim(event)}>
+            <form
+              className="space-y-4"
+              onSubmit={(event) => void handleClaim(event)}
+            >
               <label className="block text-sm font-extrabold">
                 6 位領取碼
                 <input
@@ -366,16 +404,25 @@ export function PhotoProcessor() {
                   inputMode="text"
                   maxLength={6}
                   value={claimCode}
-                  onChange={(event) => setClaimCode(event.target.value.toUpperCase())}
+                  onChange={(event) =>
+                    setClaimCode(event.target.value.toUpperCase())
+                  }
                   placeholder="例如 A4F92C"
                   className="mt-2 h-14 w-full rounded-primary border border-primary/25 bg-background px-4 text-center text-xl font-black tracking-[0.2em] uppercase outline-none transition-all duration-600 placeholder:tracking-normal focus:border-primary"
                 />
               </label>
               <Button className="w-full" type="submit" disabled={isClaiming}>
-                {isClaiming ? <IconRefresh className="animate-spin motion-reduce:animate-none" /> : <IconPhoto />}
+                {isClaiming ? (
+                  <IconRefresh className="animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <IconPhoto />
+                )}
                 {isClaiming ? "領取中" : "領取我的照片"}
               </Button>
-              <p className="min-h-6 text-sm font-extrabold leading-6 text-primary" aria-live="polite">
+              <p
+                className="min-h-6 text-sm font-extrabold leading-6 text-primary"
+                aria-live="polite"
+              >
                 {message}
               </p>
             </form>
@@ -385,7 +432,7 @@ export function PhotoProcessor() {
 
       {draft && (
         <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_22rem] md:items-start">
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden sticky -top-30 z-10">
             <CardHeader>
               <CardTitle>你的私人照片</CardTitle>
               <CardDescription>
@@ -397,21 +444,32 @@ export function PhotoProcessor() {
                 <div className="overflow-hidden rounded-primary bg-foreground/5">
                   {/* Blob URLs cannot use the Next.js image optimizer. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={previewUrl} alt="後製照片預覽" className="mx-auto max-h-[68svh] w-full object-contain" />
+                  <img
+                    src={previewUrl}
+                    alt="後製照片預覽"
+                    className="mx-auto max-h-[68svh] w-full object-contain"
+                  />
                 </div>
               ) : (
                 <div className="grid min-h-80 place-items-center gap-4 rounded-primary bg-foreground/5 p-6 text-center">
                   {isLoadingOriginal || originalBlob ? (
                     <IconRefresh
                       className="animate-spin text-primary motion-reduce:animate-none"
-                      aria-label={isLoadingOriginal ? "正在下載原圖" : "正在產生預覽"}
+                      aria-label={
+                        isLoadingOriginal ? "正在下載原圖" : "正在產生預覽"
+                      }
                     />
                   ) : (
                     <div className="space-y-4">
                       <p className="font-bold text-foreground/65">{message}</p>
                       <Button
                         variant="secondary"
-                        onClick={() => void loadClaimedPhoto(draft, claimCode.replace(/[^a-z0-9]/gi, "").toUpperCase())}
+                        onClick={() =>
+                          void loadClaimedPhoto(
+                            draft,
+                            claimCode.replace(/[^a-z0-9]/gi, "").toUpperCase(),
+                          )
+                        }
                       >
                         <IconRefresh />
                         重新載入原圖
@@ -424,9 +482,16 @@ export function PhotoProcessor() {
               <div className="mt-5 flex flex-wrap gap-3">
                 <Button
                   disabled={!processedBlob || isProcessing}
-                  onClick={() => processedBlob && downloadBlob(processedBlob, `${title}-finished.jpg`)}
+                  onClick={() =>
+                    processedBlob &&
+                    downloadBlob(processedBlob, `${title}-finished.jpg`)
+                  }
                 >
-                  {isProcessing ? <IconRefresh className="animate-spin motion-reduce:animate-none" /> : <IconDownload />}
+                  {isProcessing ? (
+                    <IconRefresh className="animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <IconDownload />
+                  )}
                   下載完成圖
                 </Button>
               </div>
@@ -441,7 +506,9 @@ export function PhotoProcessor() {
             <Card>
               <CardHeader>
                 <CardTitle>版面與文字</CardTitle>
-                <CardDescription>選擇相框、日期與照片上的文字配置。</CardDescription>
+                <CardDescription>
+                  選擇相框、日期與照片上的文字配置。
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <ToggleOption
@@ -454,7 +521,9 @@ export function PhotoProcessor() {
                   label="日期"
                   description="顯示照片的拍攝日期與時間"
                   checked={options.timestampEnabled}
-                  onChange={(timestampEnabled) => updateOptions({ timestampEnabled })}
+                  onChange={(timestampEnabled) =>
+                    updateOptions({ timestampEnabled })
+                  }
                 />
                 <ToggleOption
                   label="文字"
@@ -467,7 +536,9 @@ export function PhotoProcessor() {
                     <RadioGroup
                       value={options.textMode}
                       onValueChange={(textMode) =>
-                        updateOptions({ textMode: textMode as ProcessingOptions["textMode"] })
+                        updateOptions({
+                          textMode: textMode as ProcessingOptions["textMode"],
+                        })
                       }
                       className="flex gap-4 text-sm font-extrabold"
                       aria-label="文字內容模式"
@@ -486,12 +557,22 @@ export function PhotoProcessor() {
                         value={options.customText}
                         maxLength={40}
                         placeholder="輸入想寫在照片上的文字"
-                        onChange={(event) => updateOptions({ customText: event.target.value })}
+                        onChange={(event) =>
+                          updateOptions({ customText: event.target.value })
+                        }
                       />
                     ) : (
                       <div className="flex items-center justify-between gap-3">
-                        <span className="font-extrabold text-primary">{options.defaultText}</span>
-                        <Button size="sm" variant="ghost" onClick={() => updateOptions({ defaultText: randomDefaultText() })}>
+                        <span className="font-extrabold text-primary">
+                          {options.defaultText}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            updateOptions({ defaultText: randomDefaultText() })
+                          }
+                        >
                           <IconRefresh aria-hidden="true" />
                           換一句
                         </Button>
@@ -509,11 +590,19 @@ export function PhotoProcessor() {
                     />
 
                     <div className="rounded-primary border border-primary/25 bg-background p-4">
-                      <span id="text-position-label" className="mb-3 block font-extrabold">文字位置</span>
+                      <span
+                        id="text-position-label"
+                        className="mb-3 block font-extrabold"
+                      >
+                        文字位置
+                      </span>
                       <Select
                         value={options.textPosition}
                         onValueChange={(textPosition) =>
-                          updateOptions({ textPosition: textPosition as ProcessingOptions["textPosition"] })
+                          updateOptions({
+                            textPosition:
+                              textPosition as ProcessingOptions["textPosition"],
+                          })
                         }
                       >
                         <SelectTrigger aria-labelledby="text-position-label">
@@ -534,7 +623,9 @@ export function PhotoProcessor() {
             <Card>
               <CardHeader>
                 <CardTitle>基本調整</CardTitle>
-                <CardDescription>微調照片明暗、層次與整體色彩。</CardDescription>
+                <CardDescription>
+                  微調照片明暗、層次與整體色彩。
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <RangeControl
@@ -566,7 +657,13 @@ export function PhotoProcessor() {
                   min={-200}
                   max={200}
                   value={options.warmth}
-                  valueLabel={options.warmth === 0 ? "中性" : options.warmth > 0 ? `暖 +${options.warmth}` : `冷 ${options.warmth}`}
+                  valueLabel={
+                    options.warmth === 0
+                      ? "中性"
+                      : options.warmth > 0
+                        ? `暖 +${options.warmth}`
+                        : `冷 ${options.warmth}`
+                  }
                   onChange={(warmth) => updateOptions({ warmth })}
                 />
               </CardContent>
@@ -575,15 +672,21 @@ export function PhotoProcessor() {
             <Card>
               <CardHeader>
                 <CardTitle>復古質感</CardTitle>
-                <CardDescription>選擇色調，再加入底片顆粒與暗角。</CardDescription>
+                <CardDescription>
+                  選擇色調，再加入底片顆粒與暗角。
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="rounded-primary border border-primary/25 bg-background p-4">
-                  <span id="filter-label" className="mb-3 block font-extrabold">復古濾鏡</span>
+                  <span id="filter-label" className="mb-3 block font-extrabold">
+                    復古濾鏡
+                  </span>
                   <Select
                     value={options.filterPreset}
                     onValueChange={(filterPreset) =>
-                      updateOptions({ filterPreset: filterPreset as FilterPreset })
+                      updateOptions({
+                        filterPreset: filterPreset as FilterPreset,
+                      })
                     }
                   >
                     <SelectTrigger aria-labelledby="filter-label">
@@ -614,7 +717,11 @@ export function PhotoProcessor() {
                   valueLabel={`${options.vignette}%`}
                   onChange={(vignette) => updateOptions({ vignette })}
                 />
-                <Button className="w-full" variant="secondary" onClick={resetOptions}>
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  onClick={resetOptions}
+                >
                   <IconRefresh aria-hidden="true" />
                   重設所有後製
                 </Button>
@@ -624,7 +731,9 @@ export function PhotoProcessor() {
             <Card>
               <CardHeader>
                 <CardTitle>下載或公開</CardTitle>
-                <CardDescription>照片預設私人；是否加入公開相簿由領取者決定。</CardDescription>
+                <CardDescription>
+                  照片預設私人；是否加入公開相簿由領取者決定。
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <label className="block text-sm font-extrabold">
@@ -644,13 +753,25 @@ export function PhotoProcessor() {
                 />
                 <Button
                   className="w-full"
-                  disabled={!processedBlob || !publishPublicly || isPublishing || isProcessing}
+                  disabled={
+                    !processedBlob ||
+                    !publishPublicly ||
+                    isPublishing ||
+                    isProcessing
+                  }
                   onClick={() => void handlePublish()}
                 >
-                  {isPublishing ? <IconRefresh className="animate-spin motion-reduce:animate-none" /> : <IconCloudUpload />}
+                  {isPublishing ? (
+                    <IconRefresh className="animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <IconCloudUpload />
+                  )}
                   {isPublishing ? "公開中" : "公開到網站相簿"}
                 </Button>
-                <p className="min-h-6 text-sm font-extrabold leading-6 text-primary" aria-live="polite">
+                <p
+                  className="min-h-6 text-sm font-extrabold leading-6 text-primary"
+                  aria-live="polite"
+                >
                   {message}
                 </p>
               </CardContent>

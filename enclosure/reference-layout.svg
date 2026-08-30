@@ -12,7 +12,7 @@
   </style>
   <rect class="sheet" width="1200" height="780"/>
   <text class="title" x="50" y="55">Tiger Camera — E0 定位原型外觀配置（示意，非最終孔位圖）</text>
-  <text class="note" x="50" y="85">外徑 90 × 125 × 50 mm；壁厚 2.5 mm。孔中心位置由 Onshape 平面佈局後再定。</text>
+  <text class="note" x="50" y="85">外徑 90 × 105 × 50 mm；壁厚 2.5 mm。孔中心位置以 Onshape 草圖為準。</text>
 
   <!-- Front -->
   <text class="label" x="135" y="140">前面：鏡頭朝外</text>
@@ -25,7 +25,7 @@
   <text class="note" x="185" y="466">90 mm</text>
   <line class="dim" x1="95" y1="165" x2="95" y2="415"/>
   <line class="dim" x1="87" y1="165" x2="103" y2="165"/><line class="dim" x1="87" y1="415" x2="103" y2="415"/>
-  <text class="note" x="48" y="300" transform="rotate(-90 48 300)">125 mm</text>
+  <text class="note" x="48" y="300" transform="rotate(-90 48 300)">105 mm</text>
 
   <!-- Rear -->
   <text class="label" x="478" y="140">背面：螢幕朝使用者</text>
@@ -38,14 +38,14 @@
   <text class="label" x="807" y="140">右側：開關＋充電孔</text>
   <rect class="part" x="820" y="165" width="100" height="250" rx="16"/>
   <rect class="cut" x="838" y="225" width="64" height="36" rx="4"/>
-  <text class="note" x="930" y="249">KCD1-11</text>
+  <text class="note" x="930" y="249">KCD1-11 11 × 16</text>
   <rect class="cut" x="884" y="229" width="13" height="28" rx="6"/>
-  <text class="note" x="930" y="280">TP4056 USB-C</text>
+  <text class="note" x="930" y="280">TP4056 USB-C 3 × 7.5</text>
   <text class="note" x="930" y="302">緊鄰開關，直式放置</text>
   <text class="note" x="830" y="382">不設 LED 觀察孔</text>
   <line class="dim" x1="950" y1="165" x2="950" y2="415"/>
   <line class="dim" x1="942" y1="165" x2="958" y2="165"/><line class="dim" x1="942" y1="415" x2="958" y2="415"/>
-  <text class="note" x="976" y="300" transform="rotate(-90 976 300)">125 mm</text>
+  <text class="note" x="976" y="300" transform="rotate(-90 976 300)">105 mm</text>
 
   <!-- Top and bottom -->
   <text class="label" x="140" y="535">頂面</text>
@@ -56,10 +56,8 @@
   <text class="label" x="480" y="535">底面</text>
   <rect class="part" x="470" y="555" width="180" height="100" rx="12"/>
   <line class="guide" x1="470" y1="570" x2="650" y2="570"/>
-  <text class="note" x="475" y="550">前蓋／ESP32 側</text>
-  <rect class="cut" x="510" y="570" width="32" height="14" rx="6"/>
-  <rect class="cut" x="563" y="570" width="32" height="14" rx="6"/>
-  <text class="note" x="495" y="680">兩個 ESP32 USB-C：靠前蓋</text>
+  <text class="note" x="475" y="550">完整底面（無 USB 開孔）</text>
+  <text class="note" x="485" y="680">ESP32 USB-C：拆後蓋維修</text>
 
   <!-- depth -->
   <text class="label" x="820" y="535">厚度</text>
