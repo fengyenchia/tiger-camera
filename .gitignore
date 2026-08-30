@@ -39,3 +39,6 @@ firmware/**/secrets.h
 **/*.md
 # 保留根目錄的 README.md
 !/README.md
+
+# 忽略 .vscode 資料夾
+**/.vscode/
