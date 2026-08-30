@@ -1,4 +1,17 @@
-export type FilterPreset = "none" | "tiger-film" | "jungle-green" | "baby-tiger" | "night-hunter";
+export type FilterPreset =
+  | "none"
+  | "tiger-film"
+  | "baby-tiger"
+  | "night-hunter"
+  | "mono-mochi"
+  | "neon-party"
+  | "sunny-milk"
+  | "candy-pop"
+  | "lavender-dream";
+
+// Only historical public photos can contain this retired value. It is never
+// offered by the processor or accepted for a new publish request.
+export type PublishedFilterPreset = FilterPreset | "jungle-green";
 export type TextMode = "custom" | "default" | "none";
 
 export type Photo = {
@@ -6,7 +19,7 @@ export type Photo = {
   title: string;
   imageUrl: string;
   createdAt: string;
-  filterPreset: FilterPreset;
+  filterPreset: PublishedFilterPreset;
 };
 
 export type PhotoListResponse = {
@@ -26,7 +39,7 @@ export type PublishDraftInput = {
   frameEnabled: boolean;
   height: number;
   processedSize: number;
-  processingVersion: "canvas-v1" | "canvas-v2";
+  processingVersion: "canvas-v1" | "canvas-v2" | "canvas-v3";
   resolvedText: string | null;
   customText: string | null;
   textMode: TextMode;

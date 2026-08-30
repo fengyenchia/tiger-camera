@@ -46,10 +46,14 @@ import {
 
 const FILTER_OPTIONS: { value: FilterPreset; label: string }[] = [
   { value: "none", label: "無濾鏡" },
-  { value: "tiger-film", label: "Tiger Film" },
-  { value: "jungle-green", label: "Jungle Green" },
-  { value: "baby-tiger", label: "Baby Tiger" },
-  { value: "night-hunter", label: "Night Hunter" },
+  { value: "tiger-film", label: "底片小虎" },
+  { value: "baby-tiger", label: "蜜桃小虎" },
+  { value: "night-hunter", label: "午夜小虎" },
+  { value: "mono-mochi", label: "黑白小虎" },
+  { value: "neon-party", label: "霓虹小虎" },
+  { value: "sunny-milk", label: "奶油小虎" },
+  { value: "candy-pop", label: "糖果小虎" },
+  { value: "lavender-dream", label: "紫光小虎" },
 ];
 
 function toLocalDateTime(value: string | Date) {
@@ -83,6 +87,7 @@ async function getImageSize(blob: Blob) {
 // 初始後製選項
 const initialOptions: ProcessingOptions = {
   frameEnabled: true,
+  frameLayout: "landscape",
   timestampEnabled: true,
   textEnabled: false,
   textMode: "default",
@@ -102,32 +107,22 @@ const initialOptions: ProcessingOptions = {
 
 type ToggleOptionProps = {
   checked: boolean;
-  description: string;
   label: string;
   onChange: (checked: boolean) => void;
 };
 
-function ToggleOption({
-  checked,
-  description,
-  label,
-  onChange,
-}: ToggleOptionProps) {
+function ToggleOption({ checked, label, onChange }: ToggleOptionProps) {
   const id = useId();
 
   return (
-    <div className="flex items-start gap-3 rounded-primary border border-primary/25 bg-background p-4 transition-all duration-600 hover:border-primary/60">
+    <div className="flex items-center gap-3 rounded-primary border border-primary/25 bg-background p-4 transition-all duration-600 hover:border-primary/60">
       <Checkbox
         id={id}
         checked={checked}
         onCheckedChange={(value) => onChange(value === true)}
-        className="mt-1"
       />
       <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
         <span className="block font-extrabold">{label}</span>
-        <span className="mt-1 block text-xs font-semibold leading-5 text-foreground/65">
-          {description}
-        </span>
       </label>
     </div>
   );
@@ -181,7 +176,6 @@ export function PhotoProcessor() {
   const [processedBlob, setProcessedBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [title, setTitle] = useState("今天的照片");
-  const [publishPublicly, setPublishPublicly] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -210,7 +204,7 @@ export function PhotoProcessor() {
             if (previous) URL.revokeObjectURL(previous);
             return nextUrl;
           });
-          setMessage("預覽完成，可以下載或選擇公開");
+          setMessage("");
         })
         .catch((error: unknown) => {
           if (current) {
@@ -305,7 +299,7 @@ export function PhotoProcessor() {
   }
 
   async function handlePublish() {
-    if (!draft || !processedBlob || !publishPublicly) return;
+    if (!draft || !processedBlob) return;
     if (
       options.textEnabled &&
       options.textMode === "custom" &&
@@ -337,7 +331,7 @@ export function PhotoProcessor() {
         customText: textMode === "custom" ? options.customText.trim() : null,
         resolvedText,
         filterPreset: options.filterPreset,
-        processingVersion: "canvas-v2",
+        processingVersion: "canvas-v3",
       });
       window.sessionStorage.removeItem(`tiger_camera_claim_${draft.id}`);
       setMessage("完成圖已保存並加入公開相簿");
@@ -358,7 +352,7 @@ export function PhotoProcessor() {
         <h1 className="subTitle">輸入領取碼，帶走你的照片</h1>
         <p className="mt-5 max-w-5xl text-base font-semibold leading-7 text-foreground/65">
           相機會透過網路先把原圖暫存成私人草稿。掃描機身 NFC
-          開啟此頁，再輸入螢幕上的領取碼，就能在自己的手機後製並下載完成圖
+          開啟此頁，再輸入螢幕上的領取碼，就能在自己的裝置上後製並下載完成圖
         </p>
       </header>
 
@@ -387,8 +381,7 @@ export function PhotoProcessor() {
             </span>
             <CardTitle>領取私人草稿</CardTitle>
             <CardDescription>
-              領取碼只是 6 位照片配對碼，不是安全密碼；24
-              小時逾時或成功領取後即失效。
+              領取碼 24 小時逾時或成功領取後即失效
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -436,7 +429,7 @@ export function PhotoProcessor() {
             <CardHeader>
               <CardTitle>你的私人照片</CardTitle>
               <CardDescription>
-                領取後仍是私人狀態；下載完成圖不等於公開，只有勾選公開才會加入相簿。
+                領取後仍是私人狀態；下載完成圖不等於公開，只有選擇公開才會加入相簿。
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -478,23 +471,6 @@ export function PhotoProcessor() {
                   )}
                 </div>
               )}
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Button
-                  disabled={!processedBlob || isProcessing}
-                  onClick={() =>
-                    processedBlob &&
-                    downloadBlob(processedBlob, `${title}-finished.jpg`)
-                  }
-                >
-                  {isProcessing ? (
-                    <IconRefresh className="animate-spin motion-reduce:animate-none" />
-                  ) : (
-                    <IconDownload />
-                  )}
-                  下載完成圖
-                </Button>
-              </div>
             </CardContent>
           </Card>
 
@@ -506,20 +482,41 @@ export function PhotoProcessor() {
             <Card>
               <CardHeader>
                 <CardTitle>版面與文字</CardTitle>
-                <CardDescription>
-                  選擇相框、日期與照片上的文字配置。
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <ToggleOption
                   label="拍立得框"
-                  description="增加米白邊框與較寬的下方留白"
                   checked={options.frameEnabled}
                   onChange={(frameEnabled) => updateOptions({ frameEnabled })}
                 />
+                <div className="rounded-primary border border-primary/25 bg-background p-4">
+                  <span
+                    id="frame-layout-label"
+                    className="mb-3 block font-extrabold"
+                  >
+                    成品版型
+                  </span>
+                  <Select
+                    value={options.frameLayout}
+                    onValueChange={(frameLayout) =>
+                      updateOptions({
+                        frameLayout:
+                          frameLayout as ProcessingOptions["frameLayout"],
+                      })
+                    }
+                  >
+                    <SelectTrigger aria-labelledby="frame-layout-label">
+                      <SelectValue placeholder="選擇成品版型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="portrait">直式 3:4</SelectItem>
+                      <SelectItem value="landscape">橫式 4:3</SelectItem>
+                      <SelectItem value="square">方形 1:1</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <ToggleOption
                   label="日期"
-                  description="顯示照片的拍攝日期與時間"
                   checked={options.timestampEnabled}
                   onChange={(timestampEnabled) =>
                     updateOptions({ timestampEnabled })
@@ -527,7 +524,6 @@ export function PhotoProcessor() {
                 />
                 <ToggleOption
                   label="文字"
-                  description="自訂一句話，或使用隨機預設文字"
                   checked={options.textEnabled}
                   onChange={(textEnabled) => updateOptions({ textEnabled })}
                 />
@@ -556,7 +552,7 @@ export function PhotoProcessor() {
                       <Input
                         value={options.customText}
                         maxLength={40}
-                        placeholder="輸入想寫在照片上的文字"
+                        placeholder="輸入文字"
                         onChange={(event) =>
                           updateOptions({ customText: event.target.value })
                         }
@@ -623,9 +619,6 @@ export function PhotoProcessor() {
             <Card>
               <CardHeader>
                 <CardTitle>基本調整</CardTitle>
-                <CardDescription>
-                  微調照片明暗、層次與整體色彩。
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <RangeControl
@@ -671,15 +664,12 @@ export function PhotoProcessor() {
 
             <Card>
               <CardHeader>
-                <CardTitle>復古質感</CardTitle>
-                <CardDescription>
-                  選擇色調，再加入底片顆粒與暗角。
-                </CardDescription>
+                <CardTitle>風格濾鏡</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="rounded-primary border border-primary/25 bg-background p-4">
                   <span id="filter-label" className="mb-3 block font-extrabold">
-                    復古濾鏡
+                    風格選擇
                   </span>
                   <Select
                     value={options.filterPreset}
@@ -731,9 +721,6 @@ export function PhotoProcessor() {
             <Card>
               <CardHeader>
                 <CardTitle>下載或公開</CardTitle>
-                <CardDescription>
-                  照片預設私人；是否加入公開相簿由領取者決定。
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <label className="block text-sm font-extrabold">
@@ -745,29 +732,36 @@ export function PhotoProcessor() {
                     className="mt-2 h-11 w-full rounded-primary border border-primary/25 bg-background px-3 font-bold outline-none transition-all duration-600 focus:border-primary"
                   />
                 </label>
-                <ToggleOption
-                  label="公開到網站相簿"
-                  description="公開後所有人都能看到；不勾選就維持私人草稿"
-                  checked={publishPublicly}
-                  onChange={setPublishPublicly}
-                />
-                <Button
-                  className="w-full"
-                  disabled={
-                    !processedBlob ||
-                    !publishPublicly ||
-                    isPublishing ||
-                    isProcessing
-                  }
-                  onClick={() => void handlePublish()}
-                >
-                  {isPublishing ? (
-                    <IconRefresh className="animate-spin motion-reduce:animate-none" />
-                  ) : (
-                    <IconCloudUpload />
-                  )}
-                  {isPublishing ? "公開中" : "公開到網站相簿"}
-                </Button>
+                <div className="flex flex-col gap-3">
+                  <Button
+                    className="w-full"
+                    disabled={!processedBlob || isProcessing}
+                    onClick={() =>
+                      processedBlob &&
+                      downloadBlob(processedBlob, `${title}-finished.jpg`)
+                    }
+                  >
+                    {isProcessing ? (
+                      <IconRefresh className="animate-spin motion-reduce:animate-none" />
+                    ) : (
+                      <IconDownload />
+                    )}
+                    下載完成圖
+                  </Button>
+                  <Button
+                    className="w-full"
+                    disabled={!processedBlob || isPublishing || isProcessing}
+                    onClick={() => void handlePublish()}
+                  >
+                    {isPublishing ? (
+                      <IconRefresh className="animate-spin motion-reduce:animate-none" />
+                    ) : (
+                      <IconCloudUpload />
+                    )}
+                    {isPublishing ? "公開中" : "公開到網站相簿"}
+                  </Button>
+                </div>
+
                 <p
                   className="min-h-6 text-sm font-extrabold leading-6 text-primary"
                   aria-live="polite"

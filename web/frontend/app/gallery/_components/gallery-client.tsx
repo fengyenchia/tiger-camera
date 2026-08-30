@@ -10,7 +10,7 @@ import type { Photo } from "@/api/types";
 export function GalleryClient() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [message, setMessage] = useState("這裡只顯示選擇公開的照片");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     let isCurrent = true;
@@ -38,11 +38,13 @@ export function GalleryClient() {
             大家都能看的相簿
           </h1>
           <p className="mt-5 max-w-5xl text-base font-semibold leading-7 text-foreground/65">
-            領取者在自己的手機完成後製，並勾選「公開到網站相簿」後，照片才會出現在這裡
+            領取者在自己的手機完成後製，並按下「公開到網站相簿」後，照片才會出現在這裡
           </p>
-          <p className="mt-3 min-h-6 text-sm font-extrabold text-primary" aria-live="polite">
-            {message}
-          </p>
+          {message && (
+            <p className="mt-3 min-h-6 text-sm font-extrabold text-primary" aria-live="polite">
+              {message}
+            </p>
+          )}
         </div>
       </header>
 

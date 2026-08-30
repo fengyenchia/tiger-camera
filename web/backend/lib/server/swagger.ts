@@ -77,7 +77,8 @@ export function getApiDocs() {
               createdAt: { type: "string", format: "date-time" },
               filterPreset: {
                 type: "string",
-                enum: ["none", "tiger-film", "jungle-green", "baby-tiger", "night-hunter"],
+                enum: ["none", "tiger-film", "baby-tiger", "night-hunter", "mono-mochi", "neon-party", "sunny-milk", "candy-pop", "lavender-dream", "jungle-green"],
+                description: "jungle-green 僅可能出現在歷史照片；新發布不可使用。",
               },
             },
           },
@@ -127,9 +128,9 @@ export function getApiDocs() {
               resolvedText: { type: "string", nullable: true, maxLength: 40 },
               filterPreset: {
                 type: "string",
-                enum: ["none", "tiger-film", "jungle-green", "baby-tiger", "night-hunter"],
+                enum: ["none", "tiger-film", "baby-tiger", "night-hunter", "mono-mochi", "neon-party", "sunny-milk", "candy-pop", "lavender-dream"],
               },
-              processingVersion: { type: "string", example: "canvas-v2" },
+              processingVersion: { type: "string", example: "canvas-v3" },
             },
           },
         },

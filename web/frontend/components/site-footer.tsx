@@ -22,7 +22,7 @@ export function SiteFooter() {
             </p>
           </div>
           <p className="mt-4 max-w-lg text-sm font-semibold leading-6 text-background/80">
-            拍照後用 NFC 與領取碼帶走照片，在自己的手機後製，再自由選擇是否公開
+            拍照後用 NFC 與領取碼帶走照片，在自己的裝置上後製，再選擇是否公開
           </p>
         </div>
 

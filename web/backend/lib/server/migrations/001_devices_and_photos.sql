@@ -37,7 +37,10 @@ CREATE TABLE photos (
   resolved_text text,
   filter_preset text CHECK (
     filter_preset IS NULL OR
-    filter_preset IN ('none', 'tiger-film', 'jungle-green', 'baby-tiger', 'night-hunter')
+    filter_preset IN (
+      'none', 'tiger-film', 'baby-tiger', 'night-hunter', 'mono-mochi',
+      'neon-party', 'sunny-milk', 'candy-pop', 'lavender-dream'
+    )
   ),
   processing_version text,
   mime_type text NOT NULL DEFAULT 'image/jpeg' CHECK (mime_type = 'image/jpeg'),
@@ -68,4 +71,3 @@ CREATE INDEX photos_cleanup_idx
 CREATE INDEX photos_original_cleanup_idx
   ON photos (published_at)
   WHERE status = 'active' AND original_key IS NOT NULL;
-

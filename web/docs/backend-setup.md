@@ -121,7 +121,7 @@ R2 CORS 只需要 hosted browser 上傳 processed JPEG；ESP32 的 original PUT 
 
 ### 4.2 建立正式 schema
 
-正式 migration 位於 `web/backend/lib/server/migrations/`。全新資料庫依序執行 `001_devices_and_photos.sql`、`002_fixed_device_upload_token.sql`；既有正式 Neon 已跑過 001，只需再執行 002。先跑 002、再部署新版 Backend，舊 Backend 在過渡期間仍可使用，因此不會有 schema 切換空窗。下方先保留 001 的基礎 schema 參考：
+正式 migration 位於 `web/backend/lib/server/migrations/`。全新資料庫依序執行 `001_devices_and_photos.sql`、`002_fixed_device_upload_token.sql`、`003_filter_presets_canvas_v3.sql`；既有正式 Neon 已跑過 001／002 時，只需再執行 003。先跑 migration、再部署新版 Backend，避免 schema 與 API 可接受的濾鏡值不同步。下方先保留 001 的基礎 schema 參考：
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -163,7 +163,10 @@ CREATE TABLE photos (
   resolved_text text,
   filter_preset text CHECK (
     filter_preset IS NULL OR
-    filter_preset IN ('none', 'tiger-film', 'jungle-green', 'baby-tiger', 'night-hunter')
+    filter_preset IN (
+      'none', 'tiger-film', 'baby-tiger', 'night-hunter', 'mono-mochi',
+      'neon-party', 'sunny-milk', 'candy-pop', 'lavender-dream'
+    )
   ),
   processing_version text,
   mime_type text NOT NULL DEFAULT 'image/jpeg' CHECK (mime_type = 'image/jpeg'),
@@ -218,6 +221,8 @@ $$;
 ```
 
 002 不刪除既有 `devices` rows 或歷史 `photo.device_id`，但新版程式不再讀寫它們。這是為了避免破壞既有照片；管理 devices 的 Frontend 與 Admin routes 已移除。新草稿以全域 `client_request_id` 保證 idempotency。
+
+最後執行 003。它會加入 Canvas v3 的濾鏡值，並保留 `jungle-green` 僅供舊照片 metadata 使用；新版 API 和 Frontend 均不再允許使用這個綠色色調。
 
 配對碼本來就以明碼保存，因為它不是安全憑證。`ready → claimed` 時將 `claim_code` 設為 null，UUID token 到期或發布後也設為 null；不要把它們寫進 log。
 
@@ -456,13 +461,23 @@ Response：
 ```ts
 type ProcessingOptions = {
   frameEnabled: boolean;
+  frameLayout: "portrait" | "landscape" | "square"; // 直式 3:4／橫式 4:3／方形 1:1；不旋轉，置中裁切填滿
   timestampEnabled: boolean;
   capturedAt: string;
   textEnabled: boolean;
   textMode: "custom" | "default";
   customText: string;
   defaultText: string;
-  filterPreset: "none" | "tiger-film" | "jungle-green" | "baby-tiger" | "night-hunter";
+  filterPreset:
+    | "none"
+    | "tiger-film"
+    | "baby-tiger"
+    | "night-hunter"
+    | "mono-mochi"
+    | "neon-party"
+    | "sunny-milk"
+    | "candy-pop"
+    | "lavender-dream";
   brightness: number;       // 60..140，100 為原值
   contrast: number;         // 60..160，100 為原值
   saturation: number;       // 0..180，100 為原值
@@ -474,7 +489,7 @@ type ProcessingOptions = {
 };
 ```
 
-這是目前 Frontend Canvas v2 使用的型別。拍立得框、日期與文字可任意開關；另外可調整亮度、對比、飽和度、色溫、顆粒、暗角、文字大小及文字位置，並可一鍵回到預設值。`textEnabled = false` 對應正式 metadata 的 `textMode = none`。`capturedAt` 來自裝置／照片 metadata，前端只有 `timestampEnabled` 顯示開關，不接受使用者任意修改正式拍攝時間。預設文字固定為：`ROAR!`、`抓到你了！`、`虎視眈眈！`、`今日獵物 +1`、`小虎拍到了！`。Publish 前要將抽到的實際內容解析並保存為 `resolvedText`，並以 `processingVersion = canvas-v2` 標記完成圖處理版本。
+這是目前 Frontend Canvas v3 使用的型別。成品可選直式 `3:4`、橫式 `4:3` 或方形 `1:1`，不論是否啟用拍立得框都有效；照片不旋轉，使用置中放大裁切填滿目標比例。拍立得框、日期與文字可任意開關；另可調整亮度、對比、飽和度、色溫、顆粒、暗角、文字大小及文字位置，並可一鍵回到預設值。風格濾鏡名稱統一為「風格描述＋小虎」：底片小虎（溫暖復古）、蜜桃小虎（柔亮粉橘）、午夜小虎（冷暗電影）、黑白小虎（黑白高對比）、霓虹小虎（桃紫藍光）、奶油小虎（明亮暖白）、糖果小虎（粉嫩鮮豔）、紫光小虎（紫藍夢幻）。`jungle-green` 已退休；歷史資料仍可讀取，但新發布不得使用。`textEnabled = false` 對應正式 metadata 的 `textMode = none`。`capturedAt` 來自裝置／照片 metadata，前端只有 `timestampEnabled` 顯示開關，不接受使用者任意修改正式拍攝時間。預設文字固定為：`ROAR!`、`抓到你了！`、`虎視眈眈！`、`今日獵物 +1`、`小虎拍到了！`。Publish 前要將抽到的實際內容解析並保存為 `resolvedText`，並以 `processingVersion = canvas-v3` 標記完成圖處理版本。
 
 ### 10.2 `POST /api/drafts/:id/process/initiate`
 
@@ -549,7 +564,7 @@ Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作
 
 1. 產生至少 32 bytes 的固定高熵 token，不要貼到文件或 Git。
 2. 將同一值設定為 Backend `DEVICE_UPLOAD_TOKEN`，並填入韌體私有 `secrets.h` 的 `deviceCredential`。
-3. 在 Neon 執行 002 migration，再部署 Backend；`/admin` 不再建立或列出 device。
+3. 在 Neon 依序執行 002 與 003 migration，再部署 Backend；`/admin` 不再建立或列出 device，Canvas v3 的新濾鏡值才會被資料庫接受。
 4. 用 Postman 或固定 JPEG 模擬 ESP32 完成 `initiate → PUT → complete`。
 5. 驗證同一 `clientRequestId` 不重複，錯誤 token 得到 `401`。
 
@@ -561,7 +576,7 @@ Gate A～D 與正式部署的主要功能流程已完成。以下步驟保留作
 
 ### Gate D：Canvas 與發布
 
-1. Canvas 測試橫式、直式、低光、中文、全關閉與各種組合。
+1. Canvas 測試直式、橫式、方形、低光、中文、全關閉與各種組合。
 2. 驗證 process initiate／PUT／publish 與 R2 CORS。
 3. 確認只下載完成圖時完全不呼叫 publish，且 UI 不提供原圖下載。
 

@@ -12,7 +12,7 @@
 
 - 固定 `DEVICE_UPLOAD_TOKEN` initiate／complete、短效 R2 PUT、6 位領取碼與 opaque UUID claim token。
 - Claim 後由 Backend 代理私人原圖，已排除 R2 GET redirect CORS 問題。
-- Canvas 拍立得框、日期、文字、濾鏡與基本影像調整；可全部關閉。
+- Canvas v3 成品可選直式 `3:4`、橫式 `4:3` 或方形 `1:1`，不旋轉照片並以置中放大裁切填滿；拍立得框、日期、文字、8 種風格濾鏡與基本影像調整可任意組合或關閉。Jungle Green 已退休，不提供新的使用者選項。
 - 完成圖下載、R2 PUT、publish、公開後自動前往相簿。
 - 公開相簿與 Dialog overlay 放大；每張卡片外側提供單一下載按鈕。
 - 公開圖 `?download=1` 由 Backend 直接代理 JPEG attachment，避免跨網域 redirect 只開圖不下載。

@@ -22,7 +22,7 @@ export default function Home() {
             相機先把照片上傳成私人草稿，螢幕顯示一次性領取碼
           </p>
           <p className="text-sm font-semibold text-foreground/65 md:text-lg">
-            掃描機身 NFC，在自己的手機後製、下載，再決定是否公開
+            掃描機身 NFC，在自己的裝置上後製、下載，再決定是否公開
           </p>
 
           <div className="mt-8 flex flex-col justify-center gap-3 md:flex-row">

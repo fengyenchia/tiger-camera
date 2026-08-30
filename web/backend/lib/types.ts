@@ -1,5 +1,15 @@
 export type PhotoStatus = "uploading" | "ready" | "claimed" | "active" | "deleting";
-export type FilterPreset = "none" | "tiger-film" | "jungle-green" | "baby-tiger" | "night-hunter";
+export type FilterPreset =
+  | "none"
+  | "tiger-film"
+  | "baby-tiger"
+  | "night-hunter"
+  | "mono-mochi"
+  | "neon-party"
+  | "sunny-milk"
+  | "candy-pop"
+  | "lavender-dream";
+export type StoredFilterPreset = FilterPreset | "jungle-green";
 export type TextMode = "custom" | "default" | "none";
 
 export type Photo = {
@@ -7,7 +17,7 @@ export type Photo = {
   title: string;
   imageUrl: string;
   createdAt: string;
-  filterPreset: FilterPreset;
+  filterPreset: StoredFilterPreset;
 };
 export type ProcessingMetadata = {
   filterPreset: FilterPreset;

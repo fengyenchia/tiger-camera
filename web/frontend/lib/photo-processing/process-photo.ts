@@ -1,10 +1,21 @@
 export type TextMode = "custom" | "default";
 export type TextPosition = "left" | "center" | "right";
+export type FrameLayout = "portrait" | "landscape" | "square";
 
-export type FilterPreset = "none" | "tiger-film" | "jungle-green" | "baby-tiger" | "night-hunter";
+export type FilterPreset =
+  | "none"
+  | "tiger-film"
+  | "baby-tiger"
+  | "night-hunter"
+  | "mono-mochi"
+  | "neon-party"
+  | "sunny-milk"
+  | "candy-pop"
+  | "lavender-dream";
 
 export type ProcessingOptions = {
   frameEnabled: boolean;
+  frameLayout: FrameLayout;
   timestampEnabled: boolean;
   textEnabled: boolean;
   textMode: TextMode;
@@ -32,10 +43,26 @@ export const DEFAULT_TEXTS = [
 
 const FILTERS: Record<FilterPreset, string> = {
   none: "",
-  "tiger-film": "sepia(0.3) saturate(1.08) contrast(1.08) brightness(1.03)",
-  "jungle-green": "sepia(0.18) hue-rotate(32deg) saturate(0.9) contrast(1.08)",
-  "baby-tiger": "sepia(0.16) saturate(1.2) brightness(1.08) contrast(0.96)",
-  "night-hunter": "sepia(0.2) saturate(0.78) brightness(0.84) contrast(1.18)",
+  "tiger-film": "sepia(0.28) saturate(1.08) contrast(1.08) brightness(1.03)",
+  "baby-tiger": "sepia(0.12) saturate(1.14) brightness(1.08) contrast(0.97)",
+  "night-hunter": "saturate(0.72) brightness(0.87) contrast(1.18) hue-rotate(210deg)",
+  "mono-mochi": "grayscale(1) contrast(1.3) brightness(1.04)",
+  "neon-party": "saturate(1.68) contrast(1.18) brightness(1.05) hue-rotate(292deg)",
+  "sunny-milk": "sepia(0.08) saturate(0.9) brightness(1.14) contrast(0.94)",
+  "candy-pop": "saturate(1.4) contrast(1.04) brightness(1.08) hue-rotate(-8deg)",
+  "lavender-dream": "sepia(0.1) saturate(1.1) brightness(1.05) hue-rotate(245deg)",
+};
+
+const FILTER_OVERLAYS: Record<FilterPreset, string | null> = {
+  none: null,
+  "tiger-film": "rgb(215 71 63 / 0.05)",
+  "baby-tiger": "rgb(255 143 173 / 0.07)",
+  "night-hunter": "rgb(46 82 157 / 0.08)",
+  "mono-mochi": null,
+  "neon-party": "rgb(223 68 224 / 0.1)",
+  "sunny-milk": "rgb(255 205 125 / 0.07)",
+  "candy-pop": "rgb(255 102 166 / 0.08)",
+  "lavender-dream": "rgb(135 104 221 / 0.09)",
 };
 
 function canvasToBlob(canvas: HTMLCanvasElement) {
@@ -63,21 +90,6 @@ function formatTimestamp(value: string) {
   })
     .format(date)
     .replaceAll("/", ".");
-}
-
-export function hasAnyEffect(options: ProcessingOptions) {
-  return (
-    options.frameEnabled ||
-    options.timestampEnabled ||
-    options.textEnabled ||
-    options.filterPreset !== "none" ||
-    options.brightness !== 100 ||
-    options.contrast !== 100 ||
-    options.saturation !== 100 ||
-    options.warmth !== 0 ||
-    options.grain !== 0 ||
-    options.vignette !== 0
-  );
 }
 
 function applyWarmth(
@@ -178,16 +190,37 @@ export async function processPhoto(file: File, options: ProcessingOptions) {
   if (options.textEnabled && options.textMode === "custom" && !options.customText.trim()) {
     throw new Error("請輸入文字，或改選預設文字／關閉文字");
   }
-  if (!hasAnyEffect(options)) return file;
-
   await document.fonts.ready;
   const image = await createImageBitmap(file);
 
   try {
     const maxSide = 1800;
-    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-    const photoWidth = Math.max(1, Math.round(image.width * scale));
-    const photoHeight = Math.max(1, Math.round(image.height * scale));
+    const targetAspect = options.frameLayout === "portrait"
+      ? 3 / 4
+      : options.frameLayout === "landscape"
+        ? 4 / 3
+        : 1;
+    const sourceAspect = image.width / image.height;
+    let sourceX = 0;
+    let sourceY = 0;
+    let sourceWidth = image.width;
+    let sourceHeight = image.height;
+
+    if (sourceAspect > targetAspect) {
+      sourceWidth = Math.round(image.height * targetAspect);
+      sourceX = Math.round((image.width - sourceWidth) / 2);
+    } else if (sourceAspect < targetAspect) {
+      sourceHeight = Math.round(image.width / targetAspect);
+      sourceY = Math.round((image.height - sourceHeight) / 2);
+    }
+
+    const outputLongSide = Math.min(maxSide, Math.max(image.width, image.height));
+    const photoWidth = options.frameLayout === "portrait"
+      ? Math.round(outputLongSide * 3 / 4)
+      : outputLongSide;
+    const photoHeight = options.frameLayout === "landscape"
+      ? Math.round(outputLongSide * 3 / 4)
+      : outputLongSide;
     const side = options.frameEnabled ? Math.round(Math.min(photoWidth, photoHeight) * 0.055) : 0;
     const top = side;
     const bottom = options.frameEnabled ? Math.round(Math.min(photoWidth, photoHeight) * 0.18) : 0;
@@ -197,6 +230,8 @@ export async function processPhoto(file: File, options: ProcessingOptions) {
     canvas.height = photoHeight + top + bottom;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("瀏覽器無法建立 Canvas");
+    const photoX = side;
+    const photoY = top;
 
     if (options.frameEnabled) {
       context.fillStyle = "#fffaf0";
@@ -210,17 +245,31 @@ export async function processPhoto(file: File, options: ProcessingOptions) {
       `contrast(${options.contrast / 100})`,
       `saturate(${options.saturation / 100})`,
     ].filter(Boolean).join(" ");
-    context.drawImage(image, side, top, photoWidth, photoHeight);
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      photoX,
+      photoY,
+      photoWidth,
+      photoHeight,
+    );
     context.restore();
 
-    if (options.filterPreset !== "none") {
-      context.fillStyle = "rgb(215 71 63 / 0.06)";
-      context.fillRect(side, top, photoWidth, photoHeight);
+    const filterOverlay = FILTER_OVERLAYS[options.filterPreset];
+    if (filterOverlay) {
+      context.save();
+      context.globalCompositeOperation = "soft-light";
+      context.fillStyle = filterOverlay;
+      context.fillRect(photoX, photoY, photoWidth, photoHeight);
+      context.restore();
     }
 
-    applyWarmth(context, side, top, photoWidth, photoHeight, options.warmth);
-    applyGrain(context, side, top, photoWidth, photoHeight, options.grain);
-    applyVignette(context, side, top, photoWidth, photoHeight, options.vignette);
+    applyWarmth(context, photoX, photoY, photoWidth, photoHeight, options.warmth);
+    applyGrain(context, photoX, photoY, photoWidth, photoHeight, options.grain);
+    applyVignette(context, photoX, photoY, photoWidth, photoHeight, options.vignette);
 
     const baseFontSize = Math.max(
       18,

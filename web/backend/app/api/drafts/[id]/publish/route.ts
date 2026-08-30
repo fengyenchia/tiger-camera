@@ -19,9 +19,13 @@ export const runtime = "nodejs";
 const filters = new Set<FilterPreset>([
   "none",
   "tiger-film",
-  "jungle-green",
   "baby-tiger",
   "night-hunter",
+  "mono-mochi",
+  "neon-party",
+  "sunny-milk",
+  "candy-pop",
+  "lavender-dream",
 ]);
 const textModes = new Set<TextMode>(["custom", "default", "none"]);
 
