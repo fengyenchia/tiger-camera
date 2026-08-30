@@ -30,3 +30,13 @@ firmware/**/.vscode/
 # Device-local network and API credentials
 firmware/**/include/secrets.h
 firmware/**/secrets.h
+
+# 忽略所有 reference-images 資料夾
+**/reference-images/
+
+# 忽略所有 .md 檔案
+*.md
+**/*.md
+S
+# 保留根目錄的 README.md
+!/README.md
